@@ -1,0 +1,233 @@
+.surprise-section {
+  margin: 1rem 0;
+  padding: 0.8rem 1rem;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(14px);
+  border-radius: 0.8rem;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.1);
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+.surprise-section h3 {
+  color: #ff6b6b;
+  font-size: 1.1rem;
+  margin-bottom: 0.3rem;
+  margin-top: 0;
+}
+
+.surprise-section > p {
+  color: #666;
+  margin-bottom: 0.7rem;
+  font-size: 0.85rem;
+}
+
+.surprise-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.budget-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.budget-inputs label {
+  font-weight: 600;
+  color: #333;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.budget-inputs input {
+  padding: 0.4rem 0.5rem;
+  border-radius: 0.4rem;
+  border: 2px solid rgba(255, 107, 107, 0.3);
+  background: rgba(255, 255, 255, 0.6);
+  font-family: 'HSR';
+  font-size: 0.85rem;
+  transition: all 0.3s ease;
+}
+
+.budget-inputs input:focus {
+  outline: none;
+  border-color: #ff6b6b;
+  background: rgba(255, 255, 255, 0.8);
+  transform: scale(1.01);
+}
+
+.btn-surprise {
+  padding: 0.5rem 1.2rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #ff6b6b, #ff8c42);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(255, 107, 107, 0.35);
+  transition: all 0.3s ease;
+  font-family: 'HSR';
+}
+
+.btn-surprise:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 5px 18px rgba(255, 107, 107, 0.5);
+  background: linear-gradient(135deg, #ff8c42, #ff6b6b);
+}
+
+.btn-surprise:active {
+  transform: translateY(-1px) scale(1.01);
+}
+
+.btn-surprise:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+#surprise-results {
+  margin-top: 0.7rem;
+  padding: 0.7rem;
+  background: rgba(255, 235, 205, 0.25);
+  border-radius: 0.6rem;
+  animation: fadeIn 0.5s ease;
+}
+
+#surprise-results h4 {
+  color: #ff6b6b;
+  margin-top: 0;
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+  justify-content: center;
+  text-align: center;
+  align-items: center;
+}
+
+#surprise-plats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0.5rem 0;
+}
+
+.surprise-plat-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.6rem;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 0.4rem;
+  transition: all 0.3s ease;
+}
+
+.surprise-plat-card:hover {
+  background: rgba(255, 255, 255, 0.7);
+  transform: translateX(3px);
+}
+
+.surprise-plat-info {
+  flex: 1;
+}
+
+.surprise-plat-info h5 {
+  margin: 0 0 0.1rem 0;
+  color: #333;
+  font-size: 0.85rem;
+}
+
+.surprise-plat-info .restaurant-name {
+  font-size: 0.75rem;
+  color: #666;
+  font-style: italic;
+}
+
+.surprise-plat-price {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #ff6b6b;
+}
+
+.surprise-total {
+  margin: 0.5rem 0;
+  padding: 0.4rem;
+  background: rgba(255, 107, 107, 0.1);
+  border-radius: 0.4rem;
+  font-size: 0.95rem;
+  color: #333;
+  text-align: center;
+}
+
+.surprise-total strong {
+  color: #ff6b6b;
+}
+
+#surprise-results .btn {
+  width: 100%;
+  margin-top: 0.4rem;
+  padding: 0.5rem;
+  font-size: 0.85rem;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Messages flash */
+.flash-message {
+  position: fixed;
+  top: 20px;
+  left: 40%;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(7px);
+  color: #727272ff;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-family: 'HSR', sans-serif;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  z-index: 2000;
+  text-align: center;
+  justify-content: center;
+}
+
+.flash-message.success { 
+  border: 2px solid #4CAF50;
+  color: #2e7d32;
+}
+
+.flash-message.error { 
+  border: 1.5px solid #ff6b6b;
+  color: #c62828;
+}
+
+.flash-message.hide { 
+  opacity: 0; 
+  transform: translate(-50%, -10px); 
+  
+}
+
+@media (max-width: 768px) {
+  .budget-inputs {
+    grid-template-columns: 1fr;
+  }
+  
+  .surprise-section {
+    padding: 1rem;
+    margin: 1rem 0.5rem;
+  }
+  
+  .btn-surprise {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.95rem;
+  }
+}
