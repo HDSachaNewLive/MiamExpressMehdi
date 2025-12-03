@@ -130,7 +130,7 @@ DANS LES LIMITES AUTORISÉES PAR LA LOI :
 - **AUCUNE mise à jour majeure** ne sera publiée après cette date
 - Seules des **corrections de bugs critiques** pourront être apportées à la discrétion du Concédant
 - **AUCUN support technique** n'est garanti
-- Le dépôt GitHub restera accessible en lecture seule
+- Le dépôt GitHub restera accessible au téléchargement du Logiciel
 
 ### 6.3 Demandes de modification
 Le Concédant se réserve le droit de **REFUSER** :
