@@ -94,10 +94,7 @@ Avant de commencer l'installation, assurez-vous d'avoir :
 
 ### Étape 2 : Téléchargement du projet
 
-1. Clonez ce dépôt GitHub ou téléchargez-le en ZIP :
-   ```bash
-   git clone https://github.com/votre-username/foodhub.git
-   ```
+1. Téléchargez ce dépôt GitHub en ZIP.
    
 2. Si vous avez téléchargé le ZIP, extrayez-le
 
