@@ -249,3 +249,5 @@ Pour signaler des violations de ce CLUF ou des utilisations non autorisées, con
 **Projet** : FoodHub - Plateforme de commande de repas en ligne
 
 ---
+
+**Note importante** : Ce document a été préparé avec soin pour protéger les intérêts du développeur tout en permettant une utilisation raisonnable du logiciel. Il est recommandé de consulter un avocat spécialisé en propriété intellectuelle pour une validation juridique complète si le projet devait évoluer vers un usage commercial.
