@@ -159,6 +159,7 @@ foodhub/
 ---
 
 ### Étape 4 : Configuration de la base de données
+AVANT **TOUTE** ETAPE QUI SUIT, N'OUBLIEZ PAS DE LANCER WAMP!
 
 1. **Accédez à phpMyAdmin :**
    - Cliquez sur l'icône WAMP dans la barre des tâches
