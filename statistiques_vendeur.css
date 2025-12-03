@@ -1,0 +1,103 @@
+/* lisibilité, contraste, espacement, hiérarchie visuelle bla bla bla
+
+
+ne sert A RIEN (ou pas, m'en souviens plus de si je l'ai mis dans statistiques_vendeur.php ou pas)
+*/
+
+:root{
+  --container-max-width: 960px;
+  --container-padding: 28px;
+  --bg-glass: rgba(10, 14, 20, 0.55);
+  --card-bg: rgba(255,255,255,0.04);
+  --card-border: rgba(255,255,255,0.06);
+  --accent: #ffb85c;
+  --accent-strong: #f37163;
+  --muted: rgba(255,255,255,0.8);
+  --text: #ffffff;
+  --radius: 14px;
+}
+
+body { font-family: HSR; }
+
+.container, .stats-container {
+  max-width: var(--container-max-width);
+  margin: 48px auto;
+  padding: var(--container-padding);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  border: 1px solid var(--card-border);
+  box-shadow: 0 10px 40px rgba(2,6,23,0.6);
+  color: var(--text);
+  text-align: left;
+}
+
+.container h2 {
+  color: var(--accent-strong);
+  margin: 0 0 18px 0;
+  font-size: 1.6rem;
+  letter-spacing: 0.2px;
+}
+
+.stats {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 1fr;
+  margin-bottom: 18px;
+}
+
+.stats p {
+  background: var(--card-bg);
+  padding: 14px 16px;
+  border-radius: 12px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid rgba(255,255,255,0.03);
+}
+
+.stats p strong { display:block; font-size:0.95rem; color:var(--muted); }
+.stats p span.value { font-weight:700; font-size:1.15rem; color:var(--text); }
+
+.stats p .big { font-size:1.25rem; font-weight:800; color:var(--accent); }
+
+.chart-section.container { margin-top: 18px; }
+.chart-wrapper {
+  max-width: 780px;
+  margin: 12px auto 0 auto;
+  padding: 14px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255,255,255,0.03);
+  box-shadow: 0 8px 26px rgba(0,0,0,0.35);
+}
+
+.chart-wrapper h3 { margin: 0 0 8px 0; color:var(--muted); font-size:1rem; text-align:center }
+.chart-wrapper canvas { width: 100% !important; height: 320px !important; display: block; }
+
+.btn {
+  display: inline-block;
+  background: linear-gradient(90deg,var(--accent),var(--accent-strong));
+  color: #111;
+  padding: 10px 18px;
+  border-radius: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 6px 18px rgba(243,115,99,0.12);
+}
+.btn:hover { transform: translateY(-3px); box-shadow:0 10px 26px rgba(243,115,99,0.16); }
+/* pour petits écrans */
+@media (min-width: 760px) {
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .container { padding: 32px; }
+}
+
+.center { text-align: center; }
+.muted { opacity: 0.9; color: rgba(255,255,255,0.85); }
+
+.stats p { font-size: 0.98rem; }
+
+
+a:focus, .btn:focus { outline: 3px solid rgba(255,184,92,0.18); outline-offset: 2px; }
+
+
