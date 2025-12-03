@@ -9,17 +9,8 @@ if (!isset($_SESSION["user_id"])) {
 
 $user_id = (int)$_SESSION["user_id"];
 
-
-// Gestion vérification restos (super-admin)
-
-$owner_email = "mehdiguerbas5@gmail.com"; // email du proprio
-$is_owner = false;
-
-// récupérer email de l'utilisateur
-$uQ = $conn->prepare("SELECT email FROM users WHERE user_id = ?");
-$uQ->execute([$user_id]);
-$uR = $uQ->fetch(PDO::FETCH_ASSOC);
-if ($uR && isset($uR["email"])) $is_owner = ($uR["email"] === $owner_email);
+// Gestion vérification restos (super-admin basé sur user_id = 1)
+$is_owner = ($user_id === 1);
 
 // --- SUPPRIMER UNE NOTIF SI DEMANDÉE ---
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
@@ -32,7 +23,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         exit();
     }
 
-    // Vérification des restos par le proprio
+    // Vérification des restos par le super-admin (user_id = 1)
     if ($is_owner && isset($_POST["verify_id"], $_POST["action"])) {
         $rid = (int)$_POST["verify_id"];
         $action = $_POST["action"];
@@ -44,7 +35,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $conn->prepare("DELETE FROM plats WHERE restaurant_id = ?")->execute([$rid]);
             $conn->prepare("DELETE FROM restaurants WHERE restaurant_id = ?")->execute([$rid]);
         }
-        header("Location: notifications.php"); // redirect après action
+        header("Location: notifications.php");
         exit();
     }
 }
@@ -214,12 +205,12 @@ $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <?php else: ?>
     <p>Aucune notification pour le moment 🍃</p>
 <?php endif; ?>
-<p><a href="home.php" class="back-link">⬅ Retour à l’accueil</a></p>
+<p><a href="home.php" class="back-link">⬅ Retour à l'accueil</a></p>
 <!-- ============================= -->
 </main>
 <?php if($is_owner): ?>
 <main class="container">
-  <!-- Section vérification restos (proprio) -->
+  <!-- Section vérification restos (super-admin basé sur user_id = 1) -->
 <?php if($is_owner): ?>
 
 <h2>🛠 Vérification des restaurants</h2>
@@ -249,7 +240,7 @@ if(!empty($pending)):
             foreach($plats as $p){
                 $pnom = htmlspecialchars($p["nom_plat"] ?? "");
                 $pprix = htmlspecialchars($p["prix"] ?? "");
-                echo "<li>{$pnom} — {$pprix}€</li>";
+                echo "<li>{$pnom} – {$pprix}€</li>";
             }
             echo "</ul>";
         } else {
