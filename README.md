@@ -60,7 +60,7 @@ FoodHub - La plateforme qui simplifie la commande de repas en ligne.
 Avant de commencer l'installation, assurez-vous d'avoir :
 
 1. **WAMP Server 3.4.0** (Windows Apache MySQL PHP) version 3.2.0 ou supérieure
-   - Téléchargement : [https://www.wampserver.com/en/][(https://wampserver.aviatechno.net)]
+   - Téléchargement : [https://wampserver.aviatechno.net]
      **IMPORTANT**; choississez la version qui se trouve sur cette page: Installers Wampserver full install version
    - Nécessite Visual C++ Redistributable packages (voir l'onglet )
 
