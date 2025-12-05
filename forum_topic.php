@@ -416,7 +416,7 @@ endforeach;
     bubble.innerHTML = `
       <div class="bubble-content">${escapeHtml(message.contenu)}</div>
       <div class="bubble-footer">
-        ${message.can_delete ? '<button type="button" class="btn-delete-tiny" onclick="deleteMessage(' + message.message_id + ')">ðŸ—‘ï¸</button>' : ''}
+        ${message.can_delete ? '<button type="button" class="btn-delete-tiny" onclick="deleteMessage(' + message.message_id + ')">🗑️</button>' : ''}
       </div>
     `;
     
@@ -892,4 +892,5 @@ endforeach;
   }
   </style>
 </body>
+
 </html>
