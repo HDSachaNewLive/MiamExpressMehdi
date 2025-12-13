@@ -109,12 +109,14 @@ else {
       padding: .6rem 1rem;
       border-radius: .8rem;
       cursor: pointer;
-      transition: 0.2s;
+      transition: 0.3s;
       text-decoration: none;
       display: inline-block;
     }
     .btn:hover {
-      background: var(--accent-dark);
+      background: #e0555567;
+      backdrop-filter: blur(20px);
+      color: #ffffffff;
     }
     .btn-cancel {
       background: #ff6666;

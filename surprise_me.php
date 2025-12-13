@@ -1,5 +1,5 @@
 <?php
-// surprise_me.php - Génère une sélection aléatoire de plats dans home.php
+// surprise_me.php - Version avec contrainte sur le total
 session_start();
 require_once 'db/config.php';
 
@@ -19,38 +19,71 @@ if ($budget_min >= $budget_max) {
     exit;
 }
 
-// requête sql mon gars ? et ? = valeurs de budget_min et budget_max
+// sélection plats aléatoires dont le total respecte le budget
+//plusieurs tentatives et on garde celle qui correspond le mieux au budget
+// ? et ? valeur de bugdet_min et budget_max
 $sql = "
     SELECT pl.plat_id, pl.nom_plat, pl.prix, pl.description_plat, r.nom_restaurant, r.restaurant_id
     FROM plats pl
     JOIN restaurants r ON pl.restaurant_id = r.restaurant_id
     WHERE r.verified = 1
-    AND pl.prix BETWEEN ? AND ?
-    ORDER BY RAND() 
-    LIMIT 5
+    AND pl.prix <= ?
+    ORDER BY RAND()
 ";
 
 try {
     $stmt = $conn->prepare($sql);
-    $stmt->execute([$budget_min, $budget_max]);
-    $plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $stmt->execute([$budget_max]);
+    $all_plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    if (empty($plats)) {
+    if (empty($all_plats)) {
         echo json_encode(['error' => 'no_results', 'message' => 'Aucun plat trouvé dans cette gamme de prix']);
         exit;
     }
     
-    // Calcul du total
-    $total = 0;
-    foreach ($plats as $plat) {
-        $total += (float)$plat['prix'];
+    //on ajoute des plats tant que le total reste dans le budget
+    $selected_plats = [];
+    $current_total = 0;
+    
+    foreach ($all_plats as $plat) {
+        $plat_prix = (float)$plat['prix'];
+        
+        // Si on peut ajouter ce plat sans dépasser budget_max
+        if ($current_total + $plat_prix <= $budget_max) {
+            $selected_plats[] = $plat;
+            $current_total += $plat_prix;
+            
+            // Si on a atteint budget_min et qu'on a au moins 3 plats, on peut s'arrêter
+            if ($current_total >= $budget_min && count($selected_plats) >= 3) {
+                break;
+            }
+            
+            // Maximum 5 plats
+            if (count($selected_plats) >= 5) {
+                break;
+            }
+        }
+    }
+    
+    // Vérifier que le total est bien dans le budget demandé
+    if ($current_total < $budget_min) {
+        echo json_encode([
+            'error' => 'no_results', 
+            'message' => 'Impossible de trouver une sélection dans cette gamme de prix. Essayez d\'augmenter votre budget.'
+        ]);
+        exit;
+    }
+    
+    if (empty($selected_plats)) {
+        echo json_encode(['error' => 'no_results', 'message' => 'Aucune sélection possible dans cette gamme de prix']);
+        exit;
     }
     
     echo json_encode([
         'success' => true,
-        'plats' => $plats,
-        'total' => number_format($total, 2, '.', ''),
-        'count' => count($plats)
+        'plats' => $selected_plats,
+        'total' => number_format($current_total, 2, '.', ''),
+        'count' => count($selected_plats)
     ]);
     
 } catch (Exception $e) {

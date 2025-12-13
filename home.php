@@ -51,7 +51,7 @@ $stmt = $conn->prepare("
   LEFT JOIN users u ON r.proprietaire_id = u.user_id
   WHERE r.verified = 1
   GROUP BY r.restaurant_id
-  HAVING note_moyenne >= 3.5 OR note_moyenne IS NULL
+  HAVING note_moyenne >= 3 OR note_moyenne IS NULL
   ORDER BY note_moyenne DESC, nb_avis DESC
   LIMIT 6
 ");
@@ -65,12 +65,61 @@ $recommendedRestaurants = $stmt->fetchAll();
   <meta charset="utf-8">
   <title>Accueil - FoodHub</title>
   <link rel="stylesheet" href="assets/style.css">
-  <link rel="stylesheet" href="assets/surprise.css">
   <link rel="stylesheet" href="assets/barre_annonces.css">
+  <link rel="stylesheet" href="assets/surprise.css">
   <?php include 'sidebar.php'; ?> 
   <?php include "slider_son.php"; ?>
 </head>
 <body>
+<audio id="player"></audio>
+<div id="music-controls">
+  <button id="prev-track" class="music-btn" title="Piste précédente">⏮️</button>
+  <button id="next-track" class="music-btn" title="Piste suivante">⏭️</button>
+</div>
+
+<style>
+#music-controls {
+  position: fixed;
+  top: 82.5px;
+  right: 90px;
+  z-index: 99998;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(15px);
+  padding: 0.4rem 0.4rem;
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+  animation: fadeIn 0.4s ease forwards;
+}
+
+.music-btn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 10px;
+  height: 20px;
+  font-size: 0.7rem;
+  background: linear-gradient(135deg, #ff6b6b, #ffc342);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.music-btn:hover {
+  background: linear-gradient(135deg, #ff6b6b, #ffc342);
+  transform: scale(1.10);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>
 </div>
   <main class="container">
     <?php
@@ -226,7 +275,6 @@ $recommendedRestaurants = $stmt->fetchAll();
     <?php endif; ?>
 
     <?php
-// À ajouter dans home.php après la section "Retours positifs"
 
 // Récupérer les annonces actives
 $stmt = $conn->prepare("
@@ -368,11 +416,10 @@ $annonces = $stmt->fetchAll();
 <?php endif; ?>
 
 <style>
-/* Sidebar des annonces - Position fixe */
-<
+
 </style>
 
-<!-- Bouton flottant pour rouvrir la sidebar d'annonces -->
+<!-- btn flottant pour rouvrir la sidebar d'annonces -->
 <?php if (!empty($annonces)): ?>
 <button id="toggle-annonces" class="annonces-toggle-btn">
     📢
@@ -952,6 +999,40 @@ document.addEventListener('DOMContentLoaded', () => {
     transform: translateX(0);
   }
 }
+
+/* Messages flash */
+.flash-message {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(7px);
+  color: #727272ff;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-family: 'HSR', sans-serif;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  z-index: 2000;
+  text-align: center;
+  min-width: 300px;
+  max-width: 90%;
+}
+
+.flash-message.success { 
+  border: 2px solid #4CAF50;
+  color: #2e7d32;
+}
+
+.flash-message.error { 
+  border: 1.5px solid #ff6b6b;
+  color: #c62828;
+}
+
+.flash-message.hide { 
+  opacity: 0; 
+  transform: translateX(-30%) translateY(-10px); 
+}
 </style>
 <!-- animations sur les stats compteur stylé -->
 <script>
@@ -1031,7 +1112,7 @@ document.addEventListener("DOMContentLoaded", () => {
     slider.addEventListener('mouseleave', startAutoSlide);
   }
 });
-
+// merci à sliderJS pour le code source
 function updateSliderPosition() {
   const reviewsTrack = document.getElementById('reviewsTrack');
   if (!reviewsTrack) return;
@@ -1121,7 +1202,7 @@ function updateRestaurantPosition() {
   
   const cardWidth = restaurantsTrack.querySelector('.restaurant-card').offsetWidth;
   const gap = 16;
-  // Pour les restaurants, on avance de 2 cartes à la fois
+  //pour les restaur, on avance de 2 cartes à la fois
   const cardsPerSlide = 2;
   const translateX = -currentRestaurantIndex * cardsPerSlide * (cardWidth + gap);
   restaurantsTrack.style.transform = `translateX(${translateX}px)`;
@@ -1144,7 +1225,7 @@ function previousRestaurant() {
 }
 
 function startAutoRestaurantSlide() {
-  stopAutoRestaurantSlide(); // S'assurer qu'il n'y a pas de doublons
+  stopAutoRestaurantSlide(); // s'assure qu'il n'y a pas de doublons
   autoRestaurantInterval = setInterval(() => {
     nextRestaurant();
   }, 5000); //change toutes les 5 secoudes
@@ -1184,34 +1265,71 @@ VANTA.WAVES({
 </script>
 
 <!-- musique -->
- <audio id="player" autoplay></audio>
-
 <script>
-const playlist = [
-  "assets/08. June 2011 (3DS).mp3",
-  "assets/14. January 2014 (Wii U).mp3",
-  "assets/November 2012 Nintendo eShop Music.mp3",
-  "assets/WUWA - Resonators (mp3cut.net) volume boost.flac",
-  "assets/Aéroport - Animal Crossing New Horizons OST.mp3",
-  "assets/Stranger Than Paradise.mp3",
-];
+window.addEventListener('load', function() {
+  const playlist = [
+    "assets/08. June 2011 (3DS).mp3",
+    "assets/14. January 2014 (Wii U).mp3",
+    "assets/November 2012 Nintendo eShop Music.mp3",
+    "assets/WUWA - Resonators (mp3cut.net) volume boost.flac",
+    "assets/Aéroport - Animal Crossing New Horizons OST.mp3",
+    "assets/Stranger Than Paradise.mp3"
+  ];
 
-let current = 0;
-const player = document.getElementById("player");
+  const trackNames = [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ];
 
-//lire son actuel
-function playNext() {
-  player.src = playlist[current];
-  player.play();
-}
+  let current = 0;
+  const player = document.getElementById("player");
+  const trackNameEl = document.getElementById("track-name");
+  const nextBtn = document.getElementById("next-track");
+  const prevBtn = document.getElementById("prev-track");
 
-//son se termine= passe au suivant
-player.addEventListener("ended", () => {
-  current = (current + 1) % playlist.length; // boucle infinie
-  playNext();
+  if (!player || !nextBtn || !prevBtn) {
+    console.error('❌ Éléments manquants');
+    return;
+  }
+
+  function playTrack() {
+    player.src = playlist[current];
+    player.load();
+    
+    if (trackNameEl) {
+      trackNameEl.textContent = trackNames[current];
+    }
+    
+    player.play().catch(err => {
+      console.log('En attente interaction utilisateur');
+    });
+  }
+
+  // Bouton suivant
+  nextBtn.onclick = function() {
+    current = (current + 1) % playlist.length;
+    playTrack();
+  };
+
+  // Bouton précédent
+  prevBtn.onclick = function() {
+    current = (current - 1 + playlist.length) % playlist.length;
+    playTrack();
+  };
+
+  // Piste terminée = suivante
+  player.onended = function() {
+    current = (current + 1) % playlist.length;
+    playTrack();
+  };
+
+  // Démarrer
+  playTrack();
 });
-
-playNext();
 </script>
 
 </body>

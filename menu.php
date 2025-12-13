@@ -615,7 +615,7 @@ document.addEventListener("click", function(e) {
   position: fixed;
   top: 20px;
   left: 50%;
-  transform: translateX(-50%);
+  right: 100%;
   background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
   color: #727272ff;

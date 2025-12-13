@@ -16,7 +16,7 @@ $coupon_applied = null;
 $discount_amount = 0;
 $eligible_total = 0;
 
-// Ajouter / mise à jour (déjà présent) : laisser comme ça
+// Ajouter / mise à jour du panier
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['plat_id']) && !isset($_POST['supprimer_panier_id'])) {
     $plat_id = (int)$_POST['plat_id'];
     $quantite = max(1, (int)$_POST['quantite']);
@@ -539,7 +539,7 @@ h4 {
   color: #ff6b6b;
 }
 
-/* Message flash style menu.php */
+/* message flash */
 .flash-message {
   position: fixed;
   top: 20px;

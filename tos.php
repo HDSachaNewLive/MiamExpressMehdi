@@ -25,6 +25,12 @@ $connected = isset($_SESSION['user_id']);
     <div class="tos-intro">
       <p class="tos-date"><strong>Dernière mise à jour :</strong> 3 décembre 2025</p>
       <p>Bienvenue sur <strong>FoodHub</strong>. En utilisant ce site, vous acceptez les conditions de service suivantes. Veuillez les lire attentivement.</p>
+    <?php if (!isset($_SESSION['user_id'])): ?>
+      <div style="margin-top: 2rem; display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center; align-items: center;">
+      <a href="login.php" class="btn btn-glass">Connexion</a>
+      <a href="register.php" class="btn btn-glass">Inscription</a>
+      <?php endif; ?>
+      </div>
     </div>
 
     <!-- Section 1 -->
@@ -341,7 +347,30 @@ $connected = isset($_SESSION['user_id']);
       color: #ff8c42;
       text-decoration: underline;
     }
+    .btn-glass {
+      justify-content: center;
+      font-family: 'HSR', sans-serif;
+      font-size: 1.3rem;
+      padding: 15px 23px;
+      backdrop-filter: blur(15px);
+      background: rgba(231, 173, 131, 0.44);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+      cursor: pointer;
+      transition: all 0.3s ease, transform 0.2s;
+      text-decoration: none;
+      display: inline-block;
+      text-align: center;
+    }
 
+    .btn-glass:hover {
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+      background: rgba(249, 158, 72, 0.55);
+    }
     /* Responsive */
     @media (max-width: 768px) {
       .container {

@@ -10,30 +10,106 @@ document.addEventListener("DOMContentLoaded", () => {
     const slider = document.getElementById("volume-slider");
     const btn = document.getElementById("volume-button");
 
-    if(!audio) return; // si audio introuvable, on sort
+    if(!audio || !slider || !btn) return;
 
-    // initialisation du volume
-    audio.volume = parseFloat(slider.value);
+    // Clé de stockage (constantes)
+    const VOLUME_KEY = 'foodhub_volume';
+    const MUTE_KEY = 'foodhub_muted';
 
-    // slider change le volume en direct
+    // Fonction pour sauvegarder le volume
+    function saveVolume(volume) {
+        try {
+            localStorage.setItem(VOLUME_KEY, volume.toString());
+        } catch(e) {
+            console.warn('Impossible de sauvegarder le volume:', e);
+        }
+    }
+
+    // Fonction pour sauvegarder l'état mute
+    function saveMuteState(isMuted) {
+        try {
+            localStorage.setItem(MUTE_KEY, isMuted.toString());
+        } catch(e) {
+            console.warn('Impossible de sauvegarder l\'état mute:', e);
+        }
+    }
+
+    // Fonction pour charger le volume
+    function loadVolume() {
+        try {
+            const savedVolume = localStorage.getItem(VOLUME_KEY);
+            const savedMuted = localStorage.getItem(MUTE_KEY);
+            
+            // Restaurer le volume
+            if (savedVolume !== null) {
+                const volume = parseFloat(savedVolume);
+                audio.volume = volume;
+                slider.value = volume;
+            } else {
+                // Volume par défaut
+                audio.volume = 1;
+                slider.value = 1;
+            }
+
+            // Restaurer l'état mute
+            if (savedMuted === 'true') {
+                btn.dataset.lastVol = audio.volume.toString();
+                audio.volume = 0;
+                slider.value = 0;
+                btn.textContent = "🔇";
+            } else {
+                btn.textContent = audio.volume > 0 ? "🔊" : "🔇";
+            }
+        } catch(e) {
+            console.warn('Impossible de charger le volume:', e);
+            // Valeur par défaut en cas d'erreur
+            audio.volume = 1;
+            slider.value = 1;
+        }
+    }
+
+    // Charger le volume au démarrage
+    loadVolume();
+
+    // Sauvegarder quand le slider change
     slider.addEventListener("input", () => {
-        audio.volume = parseFloat(slider.value);
-        btn.textContent = audio.volume > 0 ? "🔊" : "🔇";
+        const volume = parseFloat(slider.value);
+        audio.volume = volume;
+        btn.textContent = volume > 0 ? "🔊" : "🔇";
+        
+        // Sauvegarder le nouveau volume
+        saveVolume(volume);
+        
+        // Si on remonte le volume, on n'est plus mute
+        if (volume > 0) {
+            saveMuteState(false);
+        }
     });
 
-    // bouton mute/unmute
+    // Bouton mute/unmute
     btn.addEventListener("click", () => {
         if(audio.volume > 0){
-            btn.dataset.lastVol = audio.volume;
+            // Mute
+            btn.dataset.lastVol = audio.volume.toString();
             audio.volume = 0;
             slider.value = 0;
             btn.textContent = "🔇";
+            saveMuteState(true);
         } else {
-            let restore = parseFloat(btn.dataset.lastVol || 1);
+            // Unmute
+            let restore = parseFloat(btn.dataset.lastVol || localStorage.getItem(VOLUME_KEY) || 1);
             audio.volume = restore;
             slider.value = restore;
             btn.textContent = "🔊";
+            saveVolume(restore);
+            saveMuteState(false);
         }
+    });
+
+    // Sauvegarder avant de quitter la page
+    window.addEventListener('beforeunload', () => {
+        saveVolume(audio.volume);
+        saveMuteState(audio.volume === 0);
     });
 });
 </script>

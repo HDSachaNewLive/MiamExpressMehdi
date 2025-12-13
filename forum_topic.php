@@ -295,7 +295,7 @@ endforeach;
         <?php endif; ?>
       <?php else: ?>
         <div class="info-box">
-          ℹ️ <a href="login.php">Connecte-toi</a> pour envoyer un msg
+          ℹ️ <a href="login.php">Connecte-toi</a> pour envoyer un message
         </div>
       <?php endif; ?>
     </div>
@@ -892,5 +892,4 @@ endforeach;
   }
   </style>
 </body>
-
 </html>

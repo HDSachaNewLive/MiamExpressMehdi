@@ -9,10 +9,10 @@ if (!isset($_SESSION["user_id"])) {
 
 $user_id = (int)$_SESSION["user_id"];
 
-// Gestion vérification restos (super-admin basé sur user_id = 1)
+// Gestion vérification restos (super-admin)
 $is_owner = ($user_id === 1);
 
-// --- SUPPRIMER UNE NOTIF SI DEMANDÉE ---
+// --- supprimer notif si demandé ---
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     if (isset($_POST["delete_notif_id"])) {
@@ -23,7 +23,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         exit();
     }
 
-    // Vérification des restos par le super-admin (user_id = 1)
+    // Vérification des restos par le proprio
     if ($is_owner && isset($_POST["verify_id"], $_POST["action"])) {
         $rid = (int)$_POST["verify_id"];
         $action = $_POST["action"];
@@ -35,13 +35,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $conn->prepare("DELETE FROM plats WHERE restaurant_id = ?")->execute([$rid]);
             $conn->prepare("DELETE FROM restaurants WHERE restaurant_id = ?")->execute([$rid]);
         }
-        header("Location: notifications.php");
+        header("Location: notifications.php"); // redirect après action
         exit();
     }
 }
 
 // ----------------------------------
-// MARQUER TOUTES LES NOTIFS COMME LUES
+// marquer toutes les notifs commes lues au chargement de la page
 // ----------------------------------
 $update = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ?");
 $update->execute([$user_id]);
@@ -93,7 +93,6 @@ $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
     .btn-delete:hover { background:#e05555; }
     .notif-empty { color:#666; font-style:italic; margin-top:8px; }
 
-    /* === */
 /* Notifications classiques */
 .notif-section .notif-card {
     backdrop-filter: blur(15px);
@@ -111,11 +110,10 @@ $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
     color: var(--accent);
 }
 
-/* ============================== */
 /* Restos à vérifier (super-admin) */
 .resto-card-container {
     backdrop-filter: blur(10px);
-    background: rgba(255, 235, 205, 0.25); /* beige clair pour différencier */
+    background: rgba(255, 235, 205, 0.25); 
     padding: 1.5rem;
     border-radius: 1.2rem;
     border-left: 4px solid var(--accent);
@@ -127,7 +125,7 @@ $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
     transform: translateY(-3px);
 }
 .resto-card-container .notif-head h3 {
-    color: #d17a3f; /* couleur un peu chaude pour la section resto */
+    color: #d17a3f;
 }
 .resto-card-container ul {
     padding-left: 1.2rem;
@@ -205,8 +203,8 @@ $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <?php else: ?>
     <p>Aucune notification pour le moment 🍃</p>
 <?php endif; ?>
-<p><a href="home.php" class="back-link">⬅ Retour à l'accueil</a></p>
-<!-- ============================= -->
+<p><a href="home.php" class="back-link">⬅ Retour à l’accueil</a></p>
+
 </main>
 <?php if($is_owner): ?>
 <main class="container">
@@ -240,7 +238,7 @@ if(!empty($pending)):
             foreach($plats as $p){
                 $pnom = htmlspecialchars($p["nom_plat"] ?? "");
                 $pprix = htmlspecialchars($p["prix"] ?? "");
-                echo "<li>{$pnom} – {$pprix}€</li>";
+                echo "<li>{$pnom} — {$pprix}€</li>";
             }
             echo "</ul>";
         } else {
