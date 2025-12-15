@@ -65,9 +65,10 @@ $recommendedRestaurants = $stmt->fetchAll();
   <meta charset="utf-8">
   <title>Accueil - FoodHub</title>
   <link rel="stylesheet" href="assets/style.css">
-  <link rel="stylesheet" href="assets/barre_annonces.css">
   <link rel="stylesheet" href="assets/surprise.css">
-  <?php include 'sidebar.php'; ?> 
+  <link rel="stylesheet" href="assets/barre_annonces.css">
+  
+  <?php include 'sidebar.php'; ?>
   <?php include "slider_son.php"; ?>
 </head>
 <body>
@@ -562,11 +563,10 @@ document.addEventListener('DOMContentLoaded', () => {
   transition: transform 0.25s, box-shadow 0.25s;
   position: relative;
   overflow: hidden;
-
   display: flex;
-  flex-direction: column;  
-  justify-content: center; 
-  align-items: center;     
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 
@@ -1001,23 +1001,25 @@ document.addEventListener('DOMContentLoaded', () => {
 }
 
 /* Messages flash */
+/* Messages flash */
 .flash-message {
-  position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
+  position: fixed !important;
+  top: 20px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
   background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(7px);
-  color: #727272ff;
+  color: #727272;
   padding: 12px 20px;
   border-radius: 12px;
   font-family: 'HSR', sans-serif;
   box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-  z-index: 2000;
+  z-index: 10000 !important;
   text-align: center;
   min-width: 300px;
   max-width: 90%;
-}
+  animation: fadeInMessage 0.3s ease;
+} 
 
 .flash-message.success { 
   border: 2px solid #4CAF50;
@@ -1031,8 +1033,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
 .flash-message.hide { 
   opacity: 0; 
-  transform: translateX(-30%) translateY(-10px); 
+  transform: translateX(-50%) translateY(-10px); 
 }
+
+@keyframes fadeInMessage {
+  from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+/* classes diff pour correspondre au js si jamais*/
+.flash-msg {
+  position: fixed !important;
+  top: 20px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(7px);
+  color: #727272;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-family: 'HSR', sans-serif;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  z-index: 10000 !important;
+  text-align: center;
+  min-width: 300px;
+  max-width: 90%;
+  animation: fadeInMessage 0.3s ease;
+}
+
+.flash-msg.success { 
+  border: 2px solid #4CAF50;
+  color: #2e7d32;
+}
+
+.flash-msg.error { 
+  border: 1.5px solid #ff6b6b;
+  color: #c62828;
+}
+
+.flash-msg.hide { 
+  opacity: 0; 
+  transform: translateX(-50%) translateY(-10px); 
+  transition: all 0.4s;
+}
+
 </style>
 <!-- animations sur les stats compteur stylé -->
 <script>
