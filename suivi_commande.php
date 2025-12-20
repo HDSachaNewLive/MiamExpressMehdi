@@ -208,6 +208,7 @@ else {
     }
   </style>
 </head>
+<main>
 <body>
   <audio id="player" loop autoplay> <source src="assets\January 2015 - Nintendo eShop Music.mp3" type="audio/mpeg"> </audio>
   <?php include "slider_son.php"; ?>
@@ -345,27 +346,6 @@ else {
 
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/vanta/dist/vanta.waves.min.js"></script>
-
-<script>
-VANTA.WAVES({
-  el: "body",
-  mouseControls: true,
-  touchControls: true,
-  gyroControls: false,
-  minHeight: 885.00,
-  minWidth: 200.00,
-  scale: 1.00,
-  scaleMobile: 1.00,
-  color: 0xf6b26b,
-  shininess: 25,
-  waveHeight: 25,
-  waveSpeed: 0.9,
-  zoom: 1
-})
-</script>
-
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const timing = {
@@ -410,5 +390,59 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanta/dist/vanta.waves.min.js"></script>
+
+<script>
+// Fixer la hauteur du body à la hauteur de la fenêtre pour Vanta.js
+document.addEventListener('DOMContentLoaded', () => {
+  // Créer un conteneur fixe pour Vanta en arrière-plan
+  const vantaBg = document.createElement('div');
+  vantaBg.id = 'vanta-bg';
+  vantaBg.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 110vw;
+    height: 240vh;
+    z-index: 2;
+    pointer-events: none;
+  `;
+  document.body.insertBefore(vantaBg, document.body.firstChild);
+
+  // Initialiser Vanta sur ce conteneur fixe
+  VANTA.WAVES({
+    el: "#vanta-bg",
+    mouseControls: true,
+    touchControls: true,
+    gyroControls: false,
+    minHeight: 885.00,
+    minWidth: 200.00,
+    scale: 1.00,
+    scaleMobile: 1.00,
+    color: 0xf6b26b,
+    shininess: 25,
+    waveHeight: 25,
+    waveSpeed: 0.9,
+    zoom: 1
+  });
+});
+</script>
+<style>
+body {
+  background: none !important;
+  overflow-x: clip;
+}
+/* la zone du fond 3D */
+canvas.vanta-canvas {
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  width: fit-content;
+  height: fit-content;
+  z-index: 1 !important;
+}
+</style>
 </body>
 </html>
