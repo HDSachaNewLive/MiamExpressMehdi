@@ -35,11 +35,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['plat_id']) && !isset(
     exit;
 }
 
-// Suppression
+// Supprimer un article
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['supprimer_panier_id'])) {
     $panier_id = (int)$_POST['supprimer_panier_id'];
     $stmt = $conn->prepare("DELETE FROM panier WHERE panier_id = ? AND user_id = ?");
     $stmt->execute([$panier_id, $user_id]);
+    header("Location: panier.php");
+    exit;
+}
+
+// Vider le panier
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['vider_panier'])) {
+    $stmt = $conn->prepare("DELETE FROM panier WHERE user_id = ?");
+    $stmt->execute([$user_id]);
+    $message = "🗑️ Panier vidé avec succès !";
     header("Location: panier.php");
     exit;
 }
@@ -198,7 +207,13 @@ $adresse_pref = $user['adresse_livraison'] ?? '';
           </tr>
         <?php endforeach; ?>
       </table>
-      
+      <!-- bouton vider la panier -->
+      <div style="margin-top: 1rem; text-align: left;">
+        <form method="post" onsubmit="return confirm('⚠️ Êtes-vous sûr de vouloir vider votre panier ? Cette action est irréversible.');">
+        <button type="submit" name="vider_panier" class="btn-clear-cart">🗑️ Vider le panier</button>
+        </form>
+      </div>
+
       <!-- Section Coupon -->
       <div class="coupon-section">
         <h3>Code de réduction</h3>
@@ -262,27 +277,8 @@ $adresse_pref = $user['adresse_livraison'] ?? '';
     <p><a href="restaurants.php">⬅ Continuer à commander</a></p>
     <p><a href="home.php">🏠 Retour à l'accueil</a></p>
   </main>
-
 <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/vanta/dist/vanta.waves.min.js"></script>
-
-<script>
-VANTA.WAVES({
-  el: "body",
-  mouseControls: true,
-  touchControls: true,
-  gyroControls: false,
-  minHeight: 885.00,
-  minWidth: 200.00,
-  scale: 1.00,
-  scaleMobile: 1.00,
-  color: 0xf6b26b,
-  shininess: 60,
-  waveHeight: 22,
-  waveSpeed: 0.7,
-  zoom: 1.1
-})
-</script>
 
 <style>
 .container {
@@ -563,6 +559,28 @@ h4 {
   from { opacity: 0; transform: translate(-50%, -10px); }
   to { opacity: 1; transform: translate(-50%, 0); }
 }
+/* btn vider panier */
+.btn-clear-cart {
+  padding: 0.7rem 1.2rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #ff6b6b, #ff4d4d);
+  color: white;
+  justify-content: left;
+  border: none;
+  border-radius: 10px;
+  margin-bottom: -10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'HSR';
+  box-shadow: 0 4px 12px rgba(255, 77, 77, 0.3);
+}
+
+.btn-clear-cart:hover {
+  background: linear-gradient(135deg, #ff4d4d, #e03e3e);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(255, 77, 77, 0.5);
+}
 </style>
 
 <script>
@@ -629,6 +647,55 @@ function showMessage(text, type = "success") {
   }, 3000);
 }
 </script>
+<script>
+//fixer hauteur du body à la hauteur de la fenêtre
+document.addEventListener('DOMContentLoaded', () => {
+  //créer conteneur fixe pour Vanta en arrière-plan
+  const vantaBg = document.createElement('div');
+  vantaBg.id = 'vanta-bg';
+  vantaBg.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 110vw;
+    height: 150vh;
+    z-index: 2;
+    pointer-events: none;
+  `;
+  document.body.insertBefore(vantaBg, document.body.firstChild);
 
+  // vanta js
+  VANTA.WAVES({
+    el: "#vanta-bg",
+    mouseControls: true,
+    touchControls: true,
+    gyroControls: false,
+    minHeight: 885.00,
+    minWidth: 200.00,
+    scale: 1.00,
+    scaleMobile: 1.00,
+    color: 0xf6b26b,
+    shininess: 60,
+    waveHeight: 22,
+    waveSpeed: 0.7,
+    zoom: 1.1
+  });
+});
+</script>
+<style>
+body {
+  background: none !important;
+  overflow-x: clip;
+}
+
+canvas.vanta-canvas {
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  width: fit-content;
+  height: fit-content;
+  z-index: 1 !important;
+}
+</style>
 </body>
 </html>
