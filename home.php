@@ -1386,7 +1386,8 @@ document.addEventListener('DOMContentLoaded', () => {
   margin-top: auto;
   padding-top: 0.8rem;
   border-top: 2px solid rgba(255, 107, 107, 0.2);
-  flex-shrink: 0;
+  flex: 1;
+  justify-content: space-between;
 }
 
 .commande-date {
@@ -1396,8 +1397,9 @@ document.addEventListener('DOMContentLoaded', () => {
   font-weight: 500;
 }
 
-/* BOUTONS ACTIONS - STYLE ORANGE COHÉRENT */
+/* BOUTONS ACTIONS */
 .commande-actions {
+  text-align: bottom;
   display: flex;
   gap: 0.5rem;
   justify-content: center;
