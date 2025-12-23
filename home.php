@@ -57,6 +57,21 @@ $stmt = $conn->prepare("
 ");
 $stmt->execute();
 $recommendedRestaurants = $stmt->fetchAll();
+
+// Récupérer les 3 dernières commandes de l'utilisateur
+$stmt = $conn->prepare("
+    SELECT c.commande_id, c.numero_utilisateur, c.date_commande, c.statut, 
+           c.montant_total, c.montant_reduction,
+           COUNT(DISTINCT cp.plat_id) as nb_articles
+    FROM commandes c
+    LEFT JOIN commande_plats cp ON c.commande_id = cp.commande_id
+    WHERE c.user_id = ?
+    GROUP BY c.commande_id
+    ORDER BY c.date_commande DESC
+    LIMIT 3
+");
+$stmt->execute([$uid]);
+$dernieresCommandes = $stmt->fetchAll();
 ?>
 
 <!DOCTYPE html>
@@ -196,8 +211,93 @@ $recommendedRestaurants = $stmt->fetchAll();
     </button>
   </div>
   <script src="assets/surprise_plats.js"></script>
-</div>
+  </div>
 
+  <!-- section dernières commandes -->
+  <?php if (!empty($dernieresCommandes)): ?>
+  <div class="dernieres-commandes-section">
+    <h3>📦 Tes dernières commandes</h3>
+  
+    <div class="commandes-grid">
+    <?php foreach ($dernieresCommandes as $cmd): ?>
+      <?php
+      // Récupérer les articles de cette commande
+      $stmtArticles = $conn->prepare("
+        SELECT cp.quantite, pl.nom_plat, pl.prix, r.nom_restaurant
+        FROM commande_plats cp
+        JOIN plats pl ON cp.plat_id = pl.plat_id
+        JOIN restaurants r ON pl.restaurant_id = r.restaurant_id
+        WHERE cp.commande_id = ?
+        LIMIT 5
+      ");
+      $stmtArticles->execute([$cmd['commande_id']]);
+      $articles = $stmtArticles->fetchAll();
+      ?>
+      
+      <div class="commande-card">
+        <div class="commande-header">
+          <div class="commande-numero-statut">
+            <span class="commande-numero">Commande #<?= $cmd['numero_utilisateur'] ?></span>
+            <span class="commande-statut statut-<?= $cmd['statut'] ?>">
+              <?php
+              $statuts = [
+                'en_attente' => '⏳ En attente',
+                'en_preparation' => '👨‍🍳 En préparation',
+                'en_livraison' => '🚚 En livraison',
+                'livree' => '✅ Livrée',
+                'annulee' => '❌ Annulée'
+              ];
+              echo $statuts[$cmd['statut']] ?? $cmd['statut'];
+              ?>
+            </span>
+          </div>
+          <div class="commande-montant">
+            <?php if ($cmd['montant_reduction'] > 0): ?>
+              <span class="montant-barre"><?= number_format($cmd['montant_total'] + $cmd['montant_reduction'], 2) ?> €</span>
+              <span class="montant-reduit"><?= number_format($cmd['montant_total'], 2) ?> €</span>
+            <?php else: ?>
+              <span class="montant-total"><?= number_format($cmd['montant_total'], 2) ?> €</span>
+            <?php endif; ?>
+          </div>
+        </div>
+        
+        <div class="commande-articles-liste">
+          <?php foreach ($articles as $article): ?>
+            <div class="article-item">
+              <span class="article-quantite">×<?= $article['quantite'] ?></span>
+              <span class="article-nom"><?= htmlspecialchars($article['nom_plat']) ?></span>
+              <span class="article-resto">(<?= htmlspecialchars($article['nom_restaurant']) ?>)</span>
+            </div>
+          <?php endforeach; ?>
+          <?php if ($cmd['nb_articles'] > 5): ?>
+            <div class="article-item article-more">
+              ... et <?= $cmd['nb_articles'] - 5 ?> autre<?= ($cmd['nb_articles'] - 5) > 1 ? 's' : '' ?> article<?= ($cmd['nb_articles'] - 5) > 1 ? 's' : '' ?>
+            </div>
+          <?php endif; ?>
+        </div>
+        
+        <div class="commande-footer" style="margin-top:1rem;">
+          <span class="commande-date">
+            🕒 <?= date('d/m/y H:i', strtotime($cmd['date_commande'])) ?>
+          </span>
+          <div class="commande-actions">
+            <a href="suivi_commande.php?commande_id=<?= $cmd['commande_id'] ?>" class="btn btn-commande">
+              Détails
+            </a>
+            <?php if ($cmd['statut'] === 'livree'): ?>
+              <a href="reorder_command.php?commande_id=<?= $cmd['commande_id'] ?>" class="btn btn-commande">
+                Recommander
+              </a>
+            <?php endif; ?>
+          </div>
+        </div>
+      </div>
+    <?php endforeach; ?>
+  </div>
+  
+  <a href="suivi_commande.php" class="voir-toutes-commandes">Voir toutes mes commandes →</a>
+</div>
+<?php endif; ?>
     <!--recommandations de restaus -->
     <?php if (!empty($recommendedRestaurants)): ?>
     <div class="recommendations-section">
@@ -1075,8 +1175,338 @@ document.addEventListener('DOMContentLoaded', () => {
   transform: translateX(-50%) translateY(-10px); 
   transition: all 0.4s;
 }
-
 </style>
+<style>
+
+/* Section dernières commandes */
+
+
+.dernieres-commandes-section {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(15px);
+  border-radius: 1.5rem;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.dernieres-commandes-section h3 {
+  text-align: center;
+  color: #ff6b6b;
+  margin-bottom: 1.5rem;
+  margin-top: 0;
+  font-size: 1.5rem;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* grille affichage honzinzontale qui s'adapte au nbr  de commanes (3 max) */
+.commandes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+  width: 100%;
+}
+
+/* CARTE COMMANDE - HAUTEUR FLEXIBLE */
+.commande-card {
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  border-radius: 0.8rem;
+  padding: 1rem;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+  min-height: fit-content;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.commande-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* HEADER DE LA COMMANDE */
+.commande-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.8rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 2px solid rgba(255, 107, 107, 0.3);
+  flex-shrink: 0;
+  gap: 0.5rem;
+}
+
+.commande-numero-statut {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.commande-numero {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commande-statut {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  width: fit-content;
+  white-space: nowrap;
+}
+
+.statut-en_attente {
+  background: rgba(255, 193, 7, 0.25);
+  color: #856404;
+}
+
+.statut-en_preparation {
+  background: rgba(33, 150, 243, 0.25);
+  color: #1565c0;
+}
+
+.statut-en_livraison {
+  background: rgba(156, 39, 176, 0.25);
+  color: #6a1b9a;
+}
+
+.statut-livree {
+  background: rgba(76, 175, 80, 0.25);
+  color: #2e7d32;
+}
+
+.statut-annulee {
+  background: rgba(244, 67, 54, 0.25);
+  color: #c62828;
+}
+
+.commande-montant {
+  text-align: right;
+  font-size: 1.1rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.montant-total {
+  color: #ff6b6b;
+}
+
+.montant-barre {
+  display: block;
+  text-decoration: line-through;
+  color: #999;
+  font-size: 0.75rem;
+  margin-bottom: 0.3rem;
+}
+
+.montant-reduit {
+  color: #4CAF50;
+  display: block;
+}
+
+/* LISTE DES ARTICLES - S'ADAPTE À LA HAUTEUR DU CONTENU */
+.commande-articles-liste {
+  flex: 0 1 auto;
+  margin: 0.8rem 0;
+  padding: 0.8rem;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 0.8rem;
+  border-left: 4px solid #ff6b6b;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  max-height: 180px;
+  padding-bottom: 10px;
+}
+
+.article-item {
+  display: flex;
+  gap: 0.4rem;
+  align-items: baseline;
+  padding: 0.3rem 0;
+  color: #333;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  min-width: 0;
+}
+
+.article-quantite {
+  font-weight: 700;
+  color: #ff6b6b;
+  min-width: 22px;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.article-nom {
+  font-weight: 600;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.article-resto {
+  color: #666;
+  font-size: 0.7rem;
+  font-style: italic;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.article-more {
+  color: #666;
+  font-style: italic;
+  padding-left: 22px;
+  font-size: 0.75rem;
+}
+
+/* footdeurue extremeeee */
+.commande-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin-top: auto;
+  padding-top: 0.8rem;
+  border-top: 2px solid rgba(255, 107, 107, 0.2);
+  flex-shrink: 0;
+}
+
+.commande-date {
+  color: #666;
+  font-size: 0.7rem;
+  text-align: center;
+  font-weight: 500;
+}
+
+/* BOUTONS ACTIONS - STYLE ORANGE COHÉRENT */
+.commande-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.btn-commande {
+  flex: 1;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #ff6b6b, #ffc342);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+  transition: all 0.35s ease;
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+  font-family: 'HSR', sans-serif;
+  white-space: nowrap;
+}
+
+.btn-commande::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.25);
+  transition: all 0.4s ease;
+  border-radius: 12px;
+}
+
+.btn-commande:hover::after {
+  left: 0;
+}
+
+.btn-commande:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.5);
+  background: linear-gradient(135deg, #ff8c42, #ff6b6b);
+}
+
+.btn-commande:active {
+  transform: translateY(-1px) scale(1.01);
+}
+
+/* LIEN "VOIR TOUTES" */
+.voir-toutes-commandes {
+  display: block;
+  text-align: center;
+  margin-top: 1rem;
+  color: #ff6b6b;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+}
+
+.voir-toutes-commandes:hover {
+  color: #ff8c42;
+  transform: scale(1.05);
+}
+
+/* SCROLLBAR PERSONNALISÉE */
+.commande-articles-liste::-webkit-scrollbar {
+  width: 4px;
+}
+
+.commande-articles-liste::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.commande-articles-liste::-webkit-scrollbar-thumb {
+  background: rgba(255, 107, 107, 0.6);
+  border-radius: 10px;
+}
+
+.commande-articles-liste::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 107, 107, 0.8);
+}
+
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+  .commandes-grid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .commandes-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .commande-card {
+    
+    min-height: 280px;
+  }
+}
+</style>
+
 <!-- animations sur les stats compteur stylé -->
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -1286,26 +1716,6 @@ window.nextRestaurant = nextRestaurant;
 window.previousRestaurant = previousRestaurant;
 </script>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/vanta/dist/vanta.waves.min.js"></script>
-
-<script>
-VANTA.WAVES({
-  el: "body",
-  mouseControls: true,
-  touchControls: true,
-  gyroControls: false,
-  minHeight: 1205.00,
-  minWidth: 200.00,
-  scale: 1.00,
-  scaleMobile: 1.00,
-  color: 0xf6b26b,
-  shininess: 60,
-  waveHeight: 22,
-  waveSpeed: 0.7,
-  zoom: 1.1
-})
-</script>
 
 <!-- musique -->
 <script>
@@ -1374,6 +1784,25 @@ window.addEventListener('load', function() {
   playTrack();
 });
 </script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanta/dist/vanta.waves.min.js"></script>
 
+<script>
+VANTA.WAVES({
+  el: "body",
+  mouseControls: true,
+  touchControls: true,
+  gyroControls: false,
+  minHeight: 1205.00,
+  minWidth: 200.00,
+  scale: 1.00,
+  scaleMobile: 1.00,
+  color: 0xf6b26b,
+  shininess: 60,
+  waveHeight: 22,
+  waveSpeed: 0.7,
+  zoom: 1.1
+})
+</script>
 </body>
 </html>
