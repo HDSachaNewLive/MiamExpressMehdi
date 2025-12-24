@@ -97,6 +97,8 @@
   animation: fadeIn 0.5s ease;
 }
 
+/* Messages flash */
+
 #surprise-results h4 {
   color: #ff6b6b;
   margin-top: 0;
@@ -181,39 +183,6 @@
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-/* Messages flash */
-.flash-message {
-  position: fixed;
-  top: 20px;
-  left: 40%;
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(7px);
-  color: #727272ff;
-  padding: 12px 20px;
-  border-radius: 12px;
-  font-family: 'HSR', sans-serif;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-  z-index: 2000;
-  text-align: center;
-  justify-content: center;
-}
-
-.flash-message.success { 
-  border: 2px solid #4CAF50;
-  color: #2e7d32;
-}
-
-.flash-message.error { 
-  border: 1.5px solid #ff6b6b;
-  color: #c62828;
-}
-
-.flash-message.hide { 
-  opacity: 0; 
-  transform: translate(-50%, -10px); 
-  
 }
 
 @media (max-width: 768px) {
