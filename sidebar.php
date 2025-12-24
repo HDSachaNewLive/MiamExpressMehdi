@@ -50,17 +50,17 @@ if (isset($_SESSION['user_id'])) {
     </a>
     
   <?php if(isset($_SESSION['user_id']) && (int)$_SESSION['user_id'] === 1 && isset($conn)): ?>
+    <a href="admin_users.php">👥 Utilisateurs</a>
     <a href="admin_coupons.php">🎟️ Coupons</a>
     <a href="admin_annonces.php">📢 Annonces</a>
   <?php endif; ?>
     <a href="apropos.php">🧭 À propos</a>
-  
+  <?php if (isset($_SESSION['user_id'])): ?>
     <a href="tos.php" style="margin-bottom: 35px;">✒️ Conditions de Service</a>
-
+  <?php endif; ?>
     <a href="logout.php" class="logout">🚪 Déconnexion</a>
   <?php endif; ?>
     <?php if (!isset($_SESSION['user_id'])): ?>
-      <a href="tos.php" style="margin-bottom: 35px;">✒️ Conditions de Service</a>
       <a href="index.php" class="logout"> ← Retour</a>
     <?php endif; ?>
 </div>
@@ -233,6 +233,9 @@ document.addEventListener('DOMContentLoaded', function () {
   const sidebar = document.getElementById('sidebar');
   const toggle = document.getElementById('toggleSidebar');
   if (!sidebar || !toggle) return;
+
+  // S'assurer que la sidebar est fermée au chargement
+  sidebar.classList.remove('open');
 
   // ouverture / fermeture
   toggle.addEventListener('click', function (e) {

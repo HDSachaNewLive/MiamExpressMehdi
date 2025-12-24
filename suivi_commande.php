@@ -395,9 +395,9 @@ document.addEventListener('DOMContentLoaded', () => {
 <script src="https://cdn.jsdelivr.net/npm/vanta/dist/vanta.waves.min.js"></script>
 
 <script>
-// Fixer la hauteur du body à la hauteur de la fenêtre pour Vanta.js
+//fixer hauteur du body à la hauteur de la fenêtre
 document.addEventListener('DOMContentLoaded', () => {
-  // Créer un conteneur fixe pour Vanta en arrière-plan
+  //créer conteneur fixe pour Vanta en arrière-plan
   const vantaBg = document.createElement('div');
   vantaBg.id = 'vanta-bg';
   vantaBg.style.cssText = `
@@ -411,7 +411,7 @@ document.addEventListener('DOMContentLoaded', () => {
   `;
   document.body.insertBefore(vantaBg, document.body.firstChild);
 
-  // Initialiser Vanta sur ce conteneur fixe
+  // vanta js
   VANTA.WAVES({
     el: "#vanta-bg",
     mouseControls: true,
@@ -434,7 +434,7 @@ body {
   background: none !important;
   overflow-x: clip;
 }
-/* la zone du fond 3D */
+
 canvas.vanta-canvas {
   position: absolute !important;
   top: 0;

@@ -45,11 +45,20 @@ if ($tentatives_ip >= $limite_tentatives) {
         if ($email === '' || $motdepasse === '') {
             $error = "Email et mot de passe requis.";
         } else {
-            $stmt = $conn->prepare("SELECT user_id, nom_user, motdepasse, type_compte, adresse_livraison FROM users WHERE email = ?");
+            $stmt = $conn->prepare("SELECT user_id, nom_user, motdepasse, type_compte, adresse_livraison, compte_actif FROM users WHERE email = ?");
             $stmt->execute([$email]);
             $user = $stmt->fetch();
 
-            if ($user && password_verify($motdepasse, $user['motdepasse'])) {
+            if ($user && !$user['compte_actif']) {
+                $error = "Votre compte a été désactivé. Contactez l'administrateur.";
+                
+                // Enregistrer la tentative
+                $stmt = $conn->prepare("
+                  INSERT INTO tentatives_conn (ip, email, attempt_time)
+                  VALUES (?, ?, NOW())
+                  ");
+                $stmt->execute([$ip, $email_verif]);
+            } elseif ($user && password_verify($motdepasse, $user['motdepasse'])) {
 
                 // Connexion réussie et reset possible des tentatives
 

@@ -40,7 +40,7 @@ $stmt = $conn->prepare("SELECT AVG(note) AS avg_note, COUNT(*) AS cnt FROM avis 
 $stmt->execute([$restaurant_id]);
 $rating = $stmt->fetch();
 $stmt = $conn->prepare("
-    SELECT a.*, u.nom_user
+    SELECT a.*, u.nom_user, u.user_id
     FROM avis a 
     JOIN users u ON a.user_id = u.user_id 
     WHERE a.restaurant_id = ? 
@@ -168,7 +168,7 @@ $type_labels = [
     <?php unset($_SESSION['message']); ?>
     <?php endif; ?>
     
-    <h2><?= htmlspecialchars($restaurant['nom_restaurant']) ?> 🍽️</h2>
+    <h2 style="text-shadow: 2px 2px 4px rgba(255, 107, 107, 0.3);"><?= htmlspecialchars($restaurant['nom_restaurant']) ?> 🍽️</h2>
     
     <p class="container-desc"><?= htmlspecialchars($restaurant['description_resto']) ?></p>
     <p>Propriétaire : <?= htmlspecialchars($restaurant['owner_name'] ?? 'Indépendant') ?></p>
@@ -237,7 +237,9 @@ $type_labels = [
 <?php endif; ?>
 
     <div class="comment-meta">
-    <strong><?= htmlspecialchars($a['nom_user']) ?></strong>
+    <a href="profil_public.php?user_id=<?= $a['user_id'] ?>" style="text-decoration: none;">
+      <strong style="color: #ff6b6b;"><?= htmlspecialchars($a['nom_user']) ?></strong>
+    </a>
     <span>— <?= (int)$a['note'] ?>★ —</span>
     <small><?= htmlspecialchars($a['date_avis']) ?></small>
     </div>
@@ -1140,5 +1142,4 @@ function hideEditForm(id) {
 
 <script src="assets/update_vote.js"></script>
 </body>
-
 </html>

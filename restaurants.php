@@ -31,178 +31,90 @@ foreach ($restaurants as $r) {
   <title>Restaurants - FoodHub</title>
   <audio autoplay> <source src="assets/00259 - WAV_259_GUESS_BANK_MEN.wav" type="audio/wav"> </audio>
   <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="restaurants.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <?php include 'sidebar.php'; ?>
+  <?php include "slider_son.php"; ?>
+<audio id="player"></audio>
+<div id="music-controls">
+  <button id="prev-track" class="music-btn" title="Piste précédente">⏮️</button>
+  <button id="next-track" class="music-btn" title="Piste suivante">⏭️</button>
+</div>
+
   <style>
-  
   #map {
   height: 450px;
   width: 100%;
   margin-bottom: 2rem;
   border-radius: 15px;
-}
+  position: relative;
+  z-index: -10000000000;
+  }
 
-
-.owner-section {
-  margin-bottom: 2rem;
-}
-
-.owner-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  color: #d75252d7; 
-}
-
-/* liste de restos */
-.resto-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1.5rem;
-  justify-content: center;
-}
-
-/* carte resto */
-.resto-card {
-  background: rgba(255, 255, 255, 0.2);
+  #volume-slider {
+    background: linear-gradient(135deg, #935cf2ff, #b88effff);
+  }
+  #volume-button {
+    background: linear-gradient(135deg, #935cf2ff, #b88effff);
+    }
+  
+  #music-controls {
+    position: fixed;
+  top: 82.5px;
+  right: 90px;
+  z-index: 99998;
+  background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(15px);
-  padding: 1.5rem;
+  padding: 0.4rem 0.4rem;
   border-radius: 1rem;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  width: 280px;
-  transition: all 0.3s ease;
-  color: #333;
-  position: relative;
-  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+  animation: fadeIn 0.4s ease forwards;
 }
 
-.resto-card::before {
-  content: "";
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-  transform: rotate(45deg);
-  pointer-events: none;
-  transition: all 0.5s ease;
-}
-
-.resto-card:hover {
-  transform: translateY(-5px) scale(1.02);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-  background: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.4);
-}
-
-.resto-card:hover::before {
-  top: -20%;
-  left: -20%;
-}
-
-.resto-card h3 {
-  margin-top: 0;
-  color: #333;
-  font-size: 1.3rem;
-  font-weight: 600;
-  margin-bottom: 0.8rem;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.resto-card p {
-  margin: 0.5rem 0;
-  color: #555;
-  font-size: 0.95rem;
-  line-height: 1.4;
-}
-
-.resto-card p strong {
-  color: #ff6b6b;
-  font-weight: 600;
-}
-
-
-
-.btn {
-  display: inline-block;
-  margin-top: 0.7rem;
-  margin-right: 0.5rem;
-  text-decoration: none;
-  text-align: center;
-  padding: 0.6rem 0.9rem;
-  border-radius: 0.8rem;
-  background: linear-gradient(135deg, #ff6b6b, #ff8c42);
-  color: #fff;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+  .music-btn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 10px;
+  height: 20px;
+  font-size: 0.7rem;
+  background: linear-gradient(135deg, #935cf2ff, #b88effff);
   border: none;
+  border-radius: 10px;
   cursor: pointer;
-  position: relative;
-  overflow: hidden;
-}
-
-.btn::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.2);
-  transition: all 0.4s ease;
-  border-radius: 0.8rem;
-}
-
-.btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
-  background: linear-gradient(135deg, #ff8c42, #ff6b6b);
-}
-
-.btn:hover::after {
-  left: 0;
-}
-
-.btn:active {
-  transform: translateY(0) scale(0.98);
-}
-
-.back-link {
-  display: inline-block;
-  margin-top: 1rem;
-  text-decoration: none;
-  color: #ff6b6b;
-  font-weight: 600;
-  padding: 0.5rem 1rem;
-  border-radius: 0.6rem;
-  background: rgba(255, 107, 107, 0.1);
   transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-.back-link:hover {
-  transform: scale(1.05);
-  background: rgba(255, 107, 107, 0.2);
-  color: #e05555;
+  .music-btn:hover {
+  background: linear-gradient(135deg, #935cf2ff, #b88effff);
+  transform: scale(1.10);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
 }
-.leaflet-control-zoom .leaflet-bar .leaflet-control {
-  z-index: 5;
+
+  @keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>
+
 </head>
 <body>
-  <?php include 'sidebar.php'; ?>
   <main class="container">
     <h1>Restaurants</h1>
-    <div id="map"></div>
+    <div id="map" style="z-index:-100;"></div>
 
     <?php foreach ($grouped_restaurants as $owner_id => $restos): ?>
       <div class="owner-section">
         <div class="owner-title"><?= htmlspecialchars($restos[0]['owner_name'] ?? 'Indépendant') ?></div>
           <div class="resto-list">
+
           <?php foreach ($restos as $r): ?>
+
             <div class="resto-card">
               <h3><?= htmlspecialchars($r['nom_restaurant']) ?></h3>
               <p><?= htmlspecialchars($r['adresse']) ?></p>
@@ -214,11 +126,12 @@ foreach ($restaurants as $r) {
               <?php endif; ?>
         </div>
       <?php endforeach; ?>
-    </div>
-  </div>
-<?php endforeach; ?>
-    <p><a class="back-link" href="<?= $connected ? 'home.php' : 'index.php' ?>">⬅ Retour</a></p>
-  </main>
+      </div>
+      </div>
+    <?php endforeach; ?>
+
+  <p><a class="back-link" href="<?= $connected ? 'home.php' : 'index.php' ?>">⬅ Retour</a></p>
+</main>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
@@ -243,27 +156,28 @@ foreach ($restaurants as $r) {
       if (!str) return '';
       return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
-  </script>
+</script>
 
-  <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/vanta/dist/vanta.fog.min.js"></script>
-  <script>
-    VANTA.FOG({
-      el: "body",
-      mouseControls: true,
-      touchControls: true,
-      gyroControls: false,
-      minHeight: 890.00,
-      minWidth: 500.00,
-      highlightColor: 0xb4a7d6,
-      midtoneColor: 0x9e8fcb,
-      lowlightColor: 0x8e7cc3,
-      baseColor: 0xffffff,
-      blurFactor: 0.7,
-      speed: 1.5,
-      zoom: 1
-    })
-  </script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanta/dist/vanta.fog.min.js"></script>
+<script>
+  VANTA.FOG({
+    el: "body",
+    mouseControls: true,
+    touchControls: true,
+    gyroControls: false,
+    minHeight: 890.00,      
+    minWidth: 500.00,
+    highlightColor:0xb4a7d6,
+    midtoneColor: 0x9e8fcb,
+    lowlightColor: 0x8e7cc3,
+    baseColor: 0xffffff,
+    blurFactor: 0.7,
+    speed: 1.5,
+    zoom: 1
+  })
+</script>
+
 <script>
 document.addEventListener("DOMContentLoaded", () => {
   const sections = document.querySelectorAll(".owner-section");
@@ -294,7 +208,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.body.appendChild(filterWrapper);
 
-  // --- style général ---
+  //style général des boutons de filtre
   const style = document.createElement("style");
   style.textContent = `
     .filter-wrapper {
@@ -305,7 +219,7 @@ document.addEventListener("DOMContentLoaded", () => {
       display: flex;
       flex-direction: column;
       gap: 0.6rem;
-      z-index: 1000;
+      z-index: 999999999;
       background: rgba(255,255,255,0.3);
       backdrop-filter: blur(8px);
       border-radius: 1rem;
@@ -394,14 +308,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const hoverSound = new Audio('assets/00240 - WAV_240_GUESS_BANK_MEN.wav');
   const clickSound = new Audio('assets/00254 - WAV_254_GUESS_BANK_MEN.wav');
 
-  // fonction pour attacher le son de hover à tous les boutons
+  // fonction pour attacher le son de hover uniquement aux boutons de filtre
   function attachHoverSound(buttons) {
     buttons.forEach(btn => {
-      // souris passe par dessus
-      btn.addEventListener('mouseenter', () => {
-        hoverSound.currentTime = 0;
-        hoverSound.play().catch(() => {});
-      });
+      if (btn.classList.contains('filter-btn')) {
+        // souris passe par dessus
+        btn.addEventListener('mouseenter', () => {
+          hoverSound.currentTime = 0;
+          hoverSound.volume = 0.6;
+          hoverSound.play().catch(() => {});
+        });
+      }
     });
   }
 
@@ -446,11 +363,11 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 
-<!-- music-->
 <audio id="player" autoplay></audio>
-
+<!-- musique -->
 <script>
-const playlist = [
+window.addEventListener('load', function() {
+  const playlist = [
   "assets/June 2015 - Nintendo eShop Music.mp3",
   "assets/September 2015 Nintendo eShop Music.mp3",
   "assets/23. May 2019 (3DS & Wii U).mp3",
@@ -458,22 +375,60 @@ const playlist = [
   "assets/08. June 2011 (3DS).mp3",
 ];
 
-let current = 0;
-const player = document.getElementById("player");
+  const trackNames = [
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ];
 
-//lire son actuel
-function playNext() {
-  player.src = playlist[current];
-  player.play();
-}
+  let current = 0;
+  const player = document.getElementById("player");
+  const trackNameEl = document.getElementById("track-name");
+  const nextBtn = document.getElementById("next-track");
+  const prevBtn = document.getElementById("prev-track");
 
-//son se termine= passe au suivant
-player.addEventListener("ended", () => {
-  current = (current + 1) % playlist.length; // boucle infinie
-  playNext();
+  if (!player || !nextBtn || !prevBtn) {
+    console.error('❌ Éléments manquants');
+    return;
+  }
+
+  function playTrack() {
+    player.src = playlist[current];
+    player.load();
+    
+    if (trackNameEl) {
+      trackNameEl.textContent = trackNames[current];
+    }
+    
+    player.play().catch(err => {
+      console.log('En attente interaction utilisateur');
+    });
+  }
+
+  // Bouton suivant
+  nextBtn.onclick = function() {
+    current = (current + 1) % playlist.length;
+    playTrack();
+  };
+
+  // Bouton précédent
+  prevBtn.onclick = function() {
+    current = (current - 1 + playlist.length) % playlist.length;
+    playTrack();
+  };
+
+  // Piste terminée = suivante
+  player.onended = function() {
+    current = (current + 1) % playlist.length;
+    playTrack();
+  };
+
+  // Démarrer
+  playTrack();
 });
-
-playNext();
 </script>
 </body>
 </html>

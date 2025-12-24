@@ -7,8 +7,8 @@ if (!isset($_SESSION['user_id'])) {
 }
 require_once 'db/config.php';
 $connected = isset($_SESSION['user_id']);
+$uid = (int)$_SESSION['user_id'];
 
-$uid = $_SESSION['user_id'];
 
 // récup Nombre de restaurants
 $stmt = $conn->query("SELECT COUNT(*) as nb_restos FROM restaurants WHERE verified = 1");
@@ -30,7 +30,7 @@ $countUsers = $stmt->fetch()['nb_utilisateurs'] ?? 0;
 //recuperer meilleurs avis (4 étoiles) et plus pour le mur de retours positifs
 $stmt = $conn->prepare("
   SELECT a.avis_id, a.note, a.commentaire, a.date_avis, a.likes, a.dislikes,
-         u.nom_user, r.nom_restaurant, r.restaurant_id
+         u.user_id, u.nom_user, r.nom_restaurant, r.restaurant_id
   FROM avis a
   JOIN users u ON a.user_id = u.user_id
   JOIN restaurants r ON a.restaurant_id = r.restaurant_id
@@ -144,7 +144,8 @@ $dernieresCommandes = $stmt->fetchAll();
     elseif($hour < 18) $greeting = "Bon après-midi";
     else $greeting = "Bonsoir";
     ?>
-    <h2><?= $greeting ?>, <?= htmlspecialchars($_SESSION['nom_user']) ?> !</h2>
+    <h2 style="text-shadow: 2px 2px 4px rgba(255, 107, 107, 0.45);
+    "><?= $greeting ?>, <?= htmlspecialchars($_SESSION['nom_user']) ?> !</h2>
 
     <h3>Coucou^^</h3>
     <p>Tu es connecté(e).</p>
@@ -346,7 +347,9 @@ $dernieresCommandes = $stmt->fetchAll();
             <div class="review-card">
               <div class="review-header">
                 <div class="reviewer-info">
-                  <strong><?= htmlspecialchars($review['nom_user']) ?></strong>
+                  <a href="profil_public.php?user_id=<?= $review['user_id'] ?>" style="text-decoration: none;">
+                    <strong style="color: #ff6b6b;"><?= htmlspecialchars($review['nom_user']) ?></strong>
+                  </a>
                   <div class="stars">
                     <?php for ($i = 1; $i <= 5; $i++): ?>
                       <span class="star <?= $i <= $review['note'] ? 'filled' : '' ?>">★</span>

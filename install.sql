@@ -1,14 +1,52 @@
+-- phpMyAdmin SQL Dump
+-- version 5.2.1
+-- https://www.phpmyadmin.net/
+--
+-- Hôte : 127.0.0.1:3306
+-- Généré le : mer. 24 déc. 2025 à 02:53
+-- Version du serveur : 9.1.0
+-- Version de PHP : 8.3.14
+
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
+
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
 /*!40101 SET NAMES utf8mb4 */;
 
+--
+-- Base de données : `foodhub_db`
+--
 CREATE DATABASE IF NOT EXISTS `foodhub_db` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 USE `foodhub_db`;
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `admin_actions`
+--
+
+DROP TABLE IF EXISTS `admin_actions`;
+CREATE TABLE IF NOT EXISTS `admin_actions` (
+  `action_id` int NOT NULL AUTO_INCREMENT,
+  `admin_id` int NOT NULL,
+  `target_user_id` int NOT NULL,
+  `action_type` enum('desactiver','activer','supprimer') NOT NULL,
+  `raison` text,
+  `date_action` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`action_id`),
+  KEY `admin_id` (`admin_id`),
+  KEY `target_user_id` (`target_user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `annonces`
+--
 
 DROP TABLE IF EXISTS `annonces`;
 CREATE TABLE IF NOT EXISTS `annonces` (
@@ -21,6 +59,12 @@ CREATE TABLE IF NOT EXISTS `annonces` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`annonce_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `avis`
+--
 
 DROP TABLE IF EXISTS `avis`;
 CREATE TABLE IF NOT EXISTS `avis` (
@@ -37,7 +81,13 @@ CREATE TABLE IF NOT EXISTS `avis` (
   PRIMARY KEY (`avis_id`),
   KEY `user_id` (`user_id`),
   KEY `restaurant_id` (`restaurant_id`)
-) ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `avis_votes`
+--
 
 DROP TABLE IF EXISTS `avis_votes`;
 CREATE TABLE IF NOT EXISTS `avis_votes` (
@@ -51,6 +101,11 @@ CREATE TABLE IF NOT EXISTS `avis_votes` (
   KEY `fk_av_vote_user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `captcha_logs`
+--
 
 DROP TABLE IF EXISTS `captcha_logs`;
 CREATE TABLE IF NOT EXISTS `captcha_logs` (
@@ -61,6 +116,11 @@ CREATE TABLE IF NOT EXISTS `captcha_logs` (
   PRIMARY KEY (`log_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `commandes`
+--
 
 DROP TABLE IF EXISTS `commandes`;
 CREATE TABLE IF NOT EXISTS `commandes` (
@@ -77,6 +137,28 @@ CREATE TABLE IF NOT EXISTS `commandes` (
   PRIMARY KEY (`commande_id`),
   KEY `user_id` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `commande_plats`
+--
+
+DROP TABLE IF EXISTS `commande_plats`;
+CREATE TABLE IF NOT EXISTS `commande_plats` (
+  `commande_id` int NOT NULL,
+  `plat_id` int NOT NULL,
+  `quantite` int DEFAULT '1',
+  `prix_unitaire` decimal(6,2) DEFAULT NULL,
+  PRIMARY KEY (`commande_id`,`plat_id`),
+  KEY `plat_id` (`plat_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `coupons`
+--
 
 DROP TABLE IF EXISTS `coupons`;
 CREATE TABLE IF NOT EXISTS `coupons` (
@@ -95,6 +177,12 @@ CREATE TABLE IF NOT EXISTS `coupons` (
   KEY `restaurant_id` (`restaurant_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `forum_messages`
+--
+
 DROP TABLE IF EXISTS `forum_messages`;
 CREATE TABLE IF NOT EXISTS `forum_messages` (
   `message_id` int NOT NULL AUTO_INCREMENT,
@@ -108,6 +196,12 @@ CREATE TABLE IF NOT EXISTS `forum_messages` (
   KEY `user_id` (`user_id`),
   KEY `idx_message_topic` (`topic_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `forum_topics`
+--
 
 DROP TABLE IF EXISTS `forum_topics`;
 CREATE TABLE IF NOT EXISTS `forum_topics` (
@@ -127,6 +221,12 @@ CREATE TABLE IF NOT EXISTS `forum_topics` (
   KEY `idx_topic_date` (`derniere_activite`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `notifications`
+--
+
 DROP TABLE IF EXISTS `notifications`;
 CREATE TABLE IF NOT EXISTS `notifications` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -143,6 +243,12 @@ CREATE TABLE IF NOT EXISTS `notifications` (
   KEY `avis_id` (`avis_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `panier`
+--
+
 DROP TABLE IF EXISTS `panier`;
 CREATE TABLE IF NOT EXISTS `panier` (
   `panier_id` int NOT NULL AUTO_INCREMENT,
@@ -155,6 +261,12 @@ CREATE TABLE IF NOT EXISTS `panier` (
   KEY `plat_id` (`plat_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `plats`
+--
+
 DROP TABLE IF EXISTS `plats`;
 CREATE TABLE IF NOT EXISTS `plats` (
   `plat_id` int NOT NULL AUTO_INCREMENT,
@@ -166,6 +278,28 @@ CREATE TABLE IF NOT EXISTS `plats` (
   PRIMARY KEY (`plat_id`),
   KEY `restaurant_id` (`restaurant_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `profil_stats`
+--
+
+DROP TABLE IF EXISTS `profil_stats`;
+CREATE TABLE IF NOT EXISTS `profil_stats` (
+  `stat_id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `nb_visites` int DEFAULT '0',
+  `derniere_visite` datetime DEFAULT NULL,
+  PRIMARY KEY (`stat_id`),
+  UNIQUE KEY `user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `restaurants`
+--
 
 DROP TABLE IF EXISTS `restaurants`;
 CREATE TABLE IF NOT EXISTS `restaurants` (
@@ -182,6 +316,12 @@ CREATE TABLE IF NOT EXISTS `restaurants` (
   KEY `proprietaire_id` (`proprietaire_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `tentatives_conn`
+--
+
 DROP TABLE IF EXISTS `tentatives_conn`;
 CREATE TABLE IF NOT EXISTS `tentatives_conn` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -191,7 +331,11 @@ CREATE TABLE IF NOT EXISTS `tentatives_conn` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-TRUNCATE TABLE `tentatives_conn`;
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `users`
+--
 
 DROP TABLE IF EXISTS `users`;
 CREATE TABLE IF NOT EXISTS `users` (
@@ -201,12 +345,16 @@ CREATE TABLE IF NOT EXISTS `users` (
   `telephone` varchar(20) DEFAULT NULL,
   `motdepasse` varchar(255) NOT NULL,
   `adresse_livraison` varchar(255) DEFAULT NULL,
+  `photo_profil` varchar(255) DEFAULT NULL,
+  `description_profil` text,
+  `couleur_vanta` varchar(7) DEFAULT '#dba1b2',
+  `compte_actif` tinyint(1) DEFAULT '1',
+  `date_desactivation` datetime DEFAULT NULL,
   `type_compte` enum('client','proprietaire') DEFAULT 'client',
   `date_creation` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`user_id`),
   UNIQUE KEY `email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
 
 -- =========================
 -- DONNÉES DE DÉMO
@@ -249,16 +397,9 @@ INSERT INTO coupons (code_reduction, type, valeur, date_debut, date_fin, utilisa
 INSERT INTO annonces (titre, message, date_debut, date_fin, actif) VALUES
 ('Bienvenue sur FoodHub !', 'Profitez de notre offre de bienvenue : 10% de réduction avec le code BIENVENUE10 sur votre première commande !', NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), 1);
 
-
 --
 -- Contraintes pour les tables déchargées
 --
-
---
--- Contraintes pour la table `avis`
---
-ALTER TABLE `avis`
-  ADD CONSTRAINT `avis_ibfk_1` FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`restaurant_id`);
 
 --
 -- Contraintes pour la table `forum_messages`
@@ -272,9 +413,14 @@ ALTER TABLE `forum_messages`
 --
 ALTER TABLE `forum_topics`
   ADD CONSTRAINT `forum_topics_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
+
+--
+-- Contraintes pour la table `profil_stats`
+--
+ALTER TABLE `profil_stats`
+  ADD CONSTRAINT `profil_stats_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
--- FIN DU SCRIPT

@@ -1,0 +1,394 @@
+.container {
+    backdrop-filter: blur(15px);
+    background: rgba(255, 255, 255, 0.25);
+    padding: 2rem;
+    border-radius: 1.5rem;
+    max-width: 1400px;
+    margin: 100px auto;
+}
+h1 .admin-title{
+    text-shadow: 3px 3px 6px rgba(255, 107, 107, 0.655);
+}
+h2 {
+    font-size: 1.6rem;
+    margin-bottom: -9px;
+}
+.admin-title {
+    color: #ff6b6b;
+    margin-bottom: 2rem;
+    text-align: center;
+    font-size: 2.6rem;
+    text-shadow: 3px 3px 6px rgba(255, 107, 107, 0.49);
+}
+
+.users-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.user-card {
+    background: rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    border: 2px solid rgba(255,255,255,0.3);
+}
+
+.user-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+}
+
+.user-card.disabled {
+    opacity: 0.6;
+    border-color: #999;
+}
+
+.user-photo {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 1rem;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid #ff6b6b;
+}
+
+.user-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.default-photo {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #ff6b6b, #ff8c42);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 700;
+    color: white;
+}
+
+.user-info {
+    text-align: center;
+}
+
+.user-name {
+    color: #ff6b6b;
+    text-decoration: none;
+    font-weight: 700;
+    transition: color 0.3s ease;
+}
+
+.user-name:hover {
+    color: #ff8c42;
+}
+
+.user-badges {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: 0.5rem 0;
+}
+
+.badge {
+    padding: 0.3rem 0.7rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.badge.admin {
+    background: rgba(255, 193, 7, 0.3);
+    color: #856404;
+}
+
+.badge.proprietaire {
+    background: rgba(76, 175, 80, 0.3);
+    color: #2e7d32;
+}
+
+.badge.client {
+    background: rgba(33, 150, 243, 0.3);
+    color: #1565c0;
+}
+
+.badge.disabled {
+    background: rgba(158, 158, 158, 0.3);
+    color: #616161;
+}
+
+.user-email {
+    font-size: 0.85rem;
+    color: #666;
+    margin: 0.5rem 0;
+}
+
+.user-stats-mini {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin: 0.8rem 0;
+    font-size: 0.85rem;
+    color: #555;
+}
+
+.user-date {
+    font-size: 0.8rem;
+    color: #888;
+    margin: 0.5rem 0;
+}
+
+.user-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    justify-content: center;
+}
+
+.btn-action {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 0.6rem;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+    font-family: 'HSR', sans-serif;
+}
+
+.btn-action.desactiver {
+    background: rgba(255, 152, 0, 0.3);
+    color: #e65100;
+}
+
+.btn-action.desactiver:hover {
+    background: rgba(255, 152, 0, 0.5);
+}
+
+.btn-action.activer {
+    background: rgba(76, 175, 80, 0.3);
+    color: #2e7d32;
+}
+
+.btn-action.activer:hover {
+    background: rgba(76, 175, 80, 0.5);
+}
+
+.btn-action.supprimer {
+    background: rgba(244, 67, 54, 0.3);
+    color: #c62828;
+}
+
+.btn-action.supprimer:hover {
+    background: rgba(244, 67, 54, 0.5);
+}
+
+.protected-badge {
+    background: rgba(158, 158, 158, 0.2);
+    color: #616161;
+    padding: 0.5rem 1rem;
+    border-radius: 0.6rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* Modal/ tout fenêtre qui empeche de cliquer autre part */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(5px);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    padding: 2rem;
+    border-radius: 1.5rem;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+
+.modal-content h3 {
+    margin-top: 0;
+    color: #ff6b6b;
+}
+
+.modal-content label {
+    display: block;
+    margin: 1rem 0 0.5rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.modal-content textarea {
+    width: 100%;
+    padding: 0.8rem;
+    border-radius: 0.8rem;
+    border: 2px solid rgba(255, 107, 107, 0.3);
+    font-family: 'HSR', sans-serif;
+    resize: none;
+
+} /*scroll bar customisée*/
+.modal-content textarea::-webkit-scrollbar {
+  width: 10px;
+}
+
+.modal-content textarea::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.modal-content textarea::-webkit-scrollbar-thumb {
+  background: rgba(255, 107, 107, 0.6);
+  border-radius: 10px;
+}
+
+.modal-content textarea::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 107, 107, 0.8);
+}
+
+.modal-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.btn-confirm, .btn-cancel {
+    flex: 1;
+    padding: 0.8rem;
+    border: none;
+    border-radius: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'HSR', sans-serif;
+}
+
+.btn-confirm {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+}
+.btn-confirm.activer:hover {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+}
+.btn-confirm.desactiver {
+    background: linear-gradient(135deg, #FF9800, #F57C00);
+}
+
+.btn-confirm.supprimer {
+    background: linear-gradient(135deg, #F44336, #D32F2F);
+}
+
+.btn-confirm:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+.btn-cancel {
+    background: rgba(158, 158, 158, 0.3);
+    color: #616161;
+}
+
+.btn-cancel:hover {
+    background: rgba(158, 158, 158, 0.5);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+th, td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+th {
+    background: rgba(255, 107, 107, 0.2);
+    font-weight: 700;
+    color: #333;
+}
+
+/*redimensionner la colonne raison pour afficher le texte long */
+td:last-child {
+    max-width: 300px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.action-badge {
+    padding: 0.3rem 0.7rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.action-badge.desactiver {
+    background: rgba(255, 152, 0, 0.2);
+    color: #e65100;
+}
+
+.action-badge.activer {
+    background: rgba(76, 175, 80, 0.2);
+    color: #2e7d32;
+}
+
+.action-badge.supprimer {
+    background: rgba(244, 67, 54, 0.2);
+    color: #c62828;
+}
+
+.success {
+    background: rgba(0, 255, 127, 0.25);
+    padding: 12px 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    border-left: 5px solid #00ff7f;
+    color: #006837;
+    font-weight: 600;
+}
+
+.error {
+    background: rgba(255, 77, 77, 0.25);
+    padding: 12px 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    border-left: 5px solid #ff4d4d;
+    color: #8b0000;
+    font-weight: 600;
+}
+
+.back-link {
+    display: inline-block;
+    margin-top: 1rem;
+    color: #ff6b6b;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.back-link:hover {
+    color: #ff8c42;
+    transform: translateX(-5px);
+}
