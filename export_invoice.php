@@ -1,5 +1,5 @@
 <?php
-// export_invoice.php - Export de facture en PDF ou CSV
+// export_invoice.php - Export de facture en PDF
 session_start();
 require_once 'db/config.php';
 
@@ -9,7 +9,7 @@ if (!isset($_SESSION['user_id']) || !isset($_GET['commande_id']) || !isset($_GET
 
 $uid = (int)$_SESSION['user_id'];
 $commande_id = (int)$_GET['commande_id'];
-$format = $_GET['format']; // 'pdf' ou 'csv'
+$format = $_GET['format']; // 'pdf' ou 'csv' (csv non utilisé dans la version finale du site)
 
 // Récupérer la commande
 $stmt = $conn->prepare("
@@ -186,7 +186,7 @@ if ($format === 'csv') {
     <body>
         <div class="no-print" style="text-align: center; margin-bottom: 20px;">
             <button class="btn" onclick="window.print()">🖨️ Imprimer / Sauvegarder en PDF</button>
-            <a href="suivi_commande.php?commande_id=<?= $commande_id ?>" class="btn">← Retour</a>
+            <button class="btn" onclick="window.close()">← Retour</button>
         </div>
         
         <div class="header">
