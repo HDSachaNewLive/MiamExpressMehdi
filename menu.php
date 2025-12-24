@@ -373,7 +373,7 @@ document.querySelectorAll(".add-to-cart-btn").forEach(btn => {
       });
 
       if (response.ok) {
-        showMessage("✅ Article ajouté au panier avec succès!");
+        showMessage("✅ Article ajouté au panier avec succès!", "success", "panier.php", "🛒 Voir le panier");
         
         // Récupérer les recommandations
         const recoResponse = await fetch("get_recommendations.php", {
@@ -528,13 +528,24 @@ document.querySelectorAll(".add-to-cart-btn").forEach(btn => {
   });
 });
 
-function showMessage(text, type = "success") {
+function showMessage(text, type = "success", buttonUrl = null, buttonText = null) {
   const oldMsg = document.querySelector(".flash-message");
   if (oldMsg) oldMsg.remove();
 
   const msg = document.createElement("div");
   msg.className = `flash-message ${type}`;
-  msg.textContent = text;
+  
+  if (buttonUrl && buttonText) {
+    msg.innerHTML = `
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+        <span>${text}</span>
+        <a href="${buttonUrl}" class="flash-btn">${buttonText}</a>
+      </div>
+    `;
+  } else {
+    msg.textContent = text;
+  }
+  
   document.body.appendChild(msg);
 
   setTimeout(() => {
@@ -632,6 +643,25 @@ document.addEventListener("click", function(e) {
 .flash-message.success { border: 1px solid #7fff7f; }
 .flash-message.error { border: 1px solid #ff6b6b; }
 .flash-message.hide { opacity: 0; transform: translate(-50%, -10px); transition: all 0.4s; }
+
+.flash-btn {
+  padding: 0.4rem 0.8rem;
+  background: rgba(255, 255, 255, 0.3);
+  color: #333;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.flash-btn:hover {
+  background: rgba(255, 255, 255, 0.5);
+  transform: scale(1.05);
+  color: #41cf64ff;
+}
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translate(-50%, -10px); }

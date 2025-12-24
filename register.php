@@ -3,6 +3,11 @@
 session_start();
 require_once 'db/config.php';
 
+// Vérifier si la BDD contient des utilisateurs
+$stmt = $conn->query("SELECT COUNT(*) as nb_users FROM users");
+$nb_users = $stmt->fetchColumn();
+$is_first_install = ($nb_users == 0);
+
 $errors = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nom = trim($_POST['nom'] ?? '');
@@ -46,6 +51,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <div class="page flip_in" id="current-page">
   <main class="container">
     <h2>Inscription</h2>
+
+    <?php if ($is_first_install): ?>
+      <div class="first-install-notice">
+        <h3>🎉 Première installation</h3>
+        <p>Créez le premier compte administrateur pour commencer.</p>
+        <p><strong>N'oubliez pas votre email ou votre mot de passe pour la suite !</strong></p>
+      </div>
+    <?php endif; ?>
 
     <?php if (!empty($errors)): ?>
       <div class="error">
@@ -120,6 +133,39 @@ VANTA.WAVES({
 .form .label {
   margin-top: 330px;
 }
+
+/* Style pour le message de première installation */
+.first-install-notice {
+  background: linear-gradient(135deg, rgba(255, 235, 205, 0.4), rgba(255, 200, 200, 0.4));
+  backdrop-filter: blur(15px);
+  padding: 1rem 1.5rem;
+  border-radius: 1rem;
+  border: 2px solid rgba(255, 107, 107, 0.3);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  text-align: center;
+  margin: 0.8rem 0;
+}
+
+.first-install-notice h3 {
+  color: #ff6b6b;
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 1.3rem;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.first-install-notice p {
+  color: #333;
+  margin: 0.4rem 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.first-install-notice p strong {
+  color: #000000a8;
+  font-weight: 700;
+}
+
 .btn-glass {
   display: flex;
   justify-content: center;    

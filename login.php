@@ -4,7 +4,12 @@ session_start();
 require_once 'db/config.php';
 require_once 'config_recaptcha.php';
 
-// Obtenir ip des client
+//vérifier si la bdd contient des utilisateurs
+$stmt = $conn->query("SELECT COUNT(*) as nb_users FROM users");
+$nb_users = $stmt->fetchColumn();
+$is_first_install = ($nb_users == 0);
+
+//obtenir ip des client
 $ip = $_SERVER['REMOTE_ADDR'] ?? 'UNKNOWN';
 
 // Nettoyage quotidien toute les 24 heure
@@ -18,28 +23,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $motdepasse = $_POST['motdepasse'] ?? '';
     $recaptcha_response = $_POST['g-recaptcha-response'] ?? '';
 
-    // Ã©mail pour la vérification brute force
+    // email pour la vérification brute force
     $email_verif = $email !== '' ? $email : '';
 
-    // liimite tentatives
+    // limite tentatives
     $limite_tentatives = 5;
 
     // Limite tentatives par IP
-$limite_tentatives = 5;
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) 
+        FROM tentatives_conn
+        WHERE ip = ?
+          AND attempt_time > (NOW() - INTERVAL 5 MINUTE)
+    ");
+    $stmt->execute([$ip]);
+    $tentatives_ip = $stmt->fetchColumn();
 
-$stmt = $conn->prepare("
-    SELECT COUNT(*) 
-    FROM tentatives_conn
-    WHERE ip = ?
-      AND attempt_time > (NOW() - INTERVAL 5 MINUTE)
-");
-$stmt->execute([$ip]);
-$tentatives_ip = $stmt->fetchColumn();
-
-// Si limite atteinte - blocage
-if ($tentatives_ip >= $limite_tentatives) {
-    $error = "Trop de tentatives depuis cette IP. Réessaie dans 5 minutes.";
-} 
+    // Si limite atteinte alors blocage
+    if ($tentatives_ip >= $limite_tentatives) {
+        $error = "Trop de tentatives depuis cette IP. Réessaie dans 5 minutes.";
+    } 
     // On ne continue que si aucune erreur
     if ($error === '') {
         if ($email === '' || $motdepasse === '') {
@@ -105,6 +108,19 @@ unset($_SESSION['success']);
   <main class="container">
     <h2>Connexion</h2>
 
+    <?php if ($is_first_install): ?>
+      <div class="first-install-notice">
+        <h3>🎉 Bienvenue sur FoodHub !</h3>
+        <p><strong>Première installation détectée.</strong></p>
+        <p>Aucun compte n'existe encore dans la base de données.</p>
+        <p>👉 <a href="register.php" class="link-highlight">Créez le premier compte administrateur</a> pour commencer à utiliser FoodHub.</p>
+        <div class="info-box">
+          <p>ℹ️ <strong>Information importante :</strong></p>
+          <p>Le premier compte créé (user_id = 1) est unique, et sera automatiquement administrateur et disposera de tous les privilèges.</p>
+        </div>
+      </div>
+    <?php else: ?>
+
     <?php if ($success): ?>
       <div class="success"><?= htmlspecialchars($success) ?></div>
     <?php endif; ?>
@@ -124,6 +140,9 @@ unset($_SESSION['success']);
     </form>
 
     <p>Pas encore de compte ? <a href="register.php">Inscription</a></p>
+    
+    <?php endif; ?>
+    
     <p><a href="index.php">Retour</a></p>
   </main>
 
@@ -167,9 +186,80 @@ VANTA.WAVES({
   transition: background 0.3s ease, transform 0.2s;
   font-family: 'HSR';
 }
+
 .form input:focus {
   background: rgba(255, 255, 255, 0.35);
   transform: scale(1.02);
+}
+
+/* Style pour le message de première installation */
+.first-install-notice {
+  background: linear-gradient(135deg, rgba(255, 235, 205, 0.4), rgba(255, 200, 200, 0.4));
+  backdrop-filter: blur(15px);
+  padding: 2rem;
+  border-radius: 1.5rem;
+  border: 2px solid rgba(255, 107, 107, 0.3);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  text-align: center;
+  margin: 1rem 0;
+}
+
+.first-install-notice h3 {
+  color: #ff6b6b;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.8rem;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.first-install-notice p {
+  color: #333;
+  margin: 0.8rem 0;
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.first-install-notice p strong {
+  color: #000000a8;
+  font-weight: 700;
+}
+
+.link-highlight {
+  color: #ff6b6b;
+  font-weight: 700;
+  text-decoration: none;
+  padding: 0.3rem 0.8rem;
+  background: rgba(255, 107, 107, 0.1);
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  display: inline-block;
+  margin: 0.5rem 0;
+}
+
+.link-highlight:hover {
+  background: rgba(255, 107, 107, 0.2);
+  transform: scale(1.025);
+  color: #ff8c42;
+}
+
+.info-box {
+  background: rgba(33, 150, 243, 0.1);
+  border-left: 4px solid #50d3fbff;
+  padding: 1rem;
+  border-radius: 0.8rem;
+  margin-top: 1.5rem;
+  text-align: left;
+}
+
+.info-box p {
+  margin: 0.5rem 0;
+  font-size: 0.95rem;
+  color: #36a6d6ff;
+}
+
+.info-box p:first-child {
+  font-weight: 700;
+  color: #2196F3;
 }
 </style>
   </div>
