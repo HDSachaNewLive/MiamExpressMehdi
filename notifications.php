@@ -40,15 +40,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 }
 
-// ----------------------------------
+
 // marquer toutes les notifs commes lues au chargement de la page
-// ----------------------------------
+
 $update = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ?");
 $update->execute([$user_id]);
 
-// ----------------------------------
 // Récupérer notifications
-// ----------------------------------
+
 $sql = "
 SELECT 
   n.id AS notif_id,
@@ -203,7 +202,7 @@ $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <?php else: ?>
     <p>Aucune notification pour le moment 🍃</p>
 <?php endif; ?>
-<p><a href="home.php" class="back-link">⬅ Retour à l’accueil</a></p>
+<p><a href="<?= isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : 'home.php' ?>" class="back-link">⬅ Retour à l’accueil</a></p>
 
 </main>
 <?php if($is_owner): ?>
@@ -266,9 +265,25 @@ endif;
 </main>
 <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/vanta/dist/vanta.waves.min.js"></script>
+
 <script>
+//fixer hauteur du body à la hauteur de la fenêtre
+document.addEventListener('DOMContentLoaded', () => {
+  //créer conteneur fixe pour Vanta en arrière-plan
+  const vantaBg = document.createElement('div');
+  vantaBg.id = 'vanta-bg';
+  vantaBg.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 110vw;
+    height: 130vh;
+    z-index: 2;
+    pointer-events: none;
+  `;
+  document.body.insertBefore(vantaBg, document.body.firstChild);
 VANTA.WAVES({
-  el: "body",
+  el: "#vanta-bg",
   mouseControls: true,
   touchControls: true,
   gyroControls: false,
@@ -281,7 +296,23 @@ VANTA.WAVES({
   waveHeight: 25,
   waveSpeed: 0.9,
   zoom: 0.9
+    });
 });
 </script>
+<style>
+body {
+  background: none !important;
+  overflow-x: clip;
+}
+
+canvas.vanta-canvas {
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  width: fit-content;
+  height: fit-content;
+  z-index: 1 !important;
+}
+</style>
 </body>
 </html>

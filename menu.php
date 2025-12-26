@@ -326,7 +326,8 @@ $type_labels = [
       <img class="modal-content" id="modalImage">
     </div>
 
-    <p><a href="restaurants.php">⬅ Retour</a></p>
+    <p><a style="margin-bottom: -10px;" href="restaurants.php">⬅ Voir d'autres restaurants</a></p>
+    <p><a href="<?= isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : 'home.php' ?>">⬅ Retour</a></p>
   </main>
 
 <script>
@@ -355,7 +356,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
 
-  // Gestion panier avec recommandations selon plat ajouté au panier
+  //gestion panier avec recommandations selon plat ajouté au panier
 document.querySelectorAll(".add-to-cart-btn").forEach(btn => {
   btn.addEventListener("click", async (e) => {
     const container = e.target.closest(".add-to-cart");
@@ -363,7 +364,7 @@ document.querySelectorAll(".add-to-cart-btn").forEach(btn => {
     const quantity = container.querySelector(".quantity-input").value;
 
     try {
-      // Ajouter au panier
+      //ajt au panier
       const response = await fetch("panier.php", {
         method: "POST",
         headers: {
@@ -375,7 +376,7 @@ document.querySelectorAll(".add-to-cart-btn").forEach(btn => {
       if (response.ok) {
         showMessage("✅ Article ajouté au panier avec succès!", "success", "panier.php", "🛒 Voir le panier");
         
-        // Récupérer les recommandations
+        //récup les recommandations
         const recoResponse = await fetch("get_recommendations.php", {
           method: "POST",
           headers: {
@@ -439,10 +440,10 @@ document.querySelectorAll(".add-to-cart-btn").forEach(btn => {
   modal.innerHTML = recoHTML;
   document.body.appendChild(modal);
   
-  // Animation d'apparition
+  // animation
   setTimeout(() => modal.classList.add('show'), 10);
   
-  // IMPORTANT : Gestionnaire pour le bouton de fermeture
+  // Gestionnaire pour le bouton de fermeture
   const closeBtn = modal.querySelector('.recommendation-close');
   if (closeBtn) {
     closeBtn.addEventListener('click', (e) => {
@@ -484,7 +485,7 @@ document.querySelectorAll(".add-to-cart-btn").forEach(btn => {
     }
   });
   
-  // Fermer avec la touche Escape
+  // Fermer avec la touche ESC (escape)
   const escapeHandler = (e) => {
     if (e.key === 'Escape') {
       closeRecommendations();
@@ -508,7 +509,7 @@ document.querySelectorAll(".add-to-cart-btn").forEach(btn => {
     return div.innerHTML;
   }
 
-  //empecher soumission vide
+  //empecher soumission vide pour commentaires et réponses proprio
   const forms = document.querySelectorAll("form");
   forms.forEach(form => {
     form.addEventListener("submit", e => {

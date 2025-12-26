@@ -106,6 +106,8 @@ foreach ($restaurants as $r) {
 <body>
   <main class="container">
     <h1>Restaurants</h1>
+
+    <!-- carte -->
     <div id="map" style="z-index:-100;"></div>
 
     <?php foreach ($grouped_restaurants as $owner_id => $restos): ?>
@@ -303,6 +305,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 
+<!-- sons hover et click sur les boutons de filtre -->
 <script>
 document.addEventListener("DOMContentLoaded", () => {
   const hoverSound = new Audio('assets/00240 - WAV_240_GUESS_BANK_MEN.wav');
@@ -430,5 +433,6 @@ window.addEventListener('load', function() {
   playTrack();
 });
 </script>
+
 </body>
 </html>

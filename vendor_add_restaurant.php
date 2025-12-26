@@ -113,7 +113,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <button type="submit" class="btn-add">Ajouter le restaurant</button>
 </form>
 
-<p><a href="home.php">← Retour</a></p>
+<p><a style="margin-top: 10px; margin-bottom: 0px;" href="<?= isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : 'home.php' ?>">← Retour</a></p>
 </main>
 
 <script>
@@ -135,7 +135,7 @@ document.getElementById("add-plat").addEventListener("click", function(){
             <option value="dessert">🍰 Dessert</option>
             <option value="sauce">🧂 Sauce</option>
         </select>
-        <button type="button" class="btn btn-red">Supprimer</button>
+        <button type="button" class="btn btn-red">🗑️ Supprimer</button>
     `;
     container.appendChild(div);
     platIndex++;
@@ -160,6 +160,7 @@ document.getElementById("add-plat").addEventListener("click", function(){
   text-align: center;
   font-family: 'HSR', sans-serif;
   animation: fadeIn 0.8s ease;
+  padding-bottom: 10px;
 }
 
 .container h1 {

@@ -40,6 +40,10 @@ if (isset($_SESSION['user_id'])) {
   <a href="panier.php">🛒 Panier</a>
   <a href="suivi_commande.php" class="sidebar-link">📦 Suivi des commandes</a>
 
+    <?php if(!isset($_SESSION['user_id'])): ?>
+    <a href="contact_admin.php">📧 Contact</a>
+    <?php endif; ?>
+    
   <?php if (isset($_SESSION['user_id'])): ?>
     <a href="forum.php">💬 Discussion</a>
     <a href="notifications.php" class="notif-link">
@@ -51,9 +55,11 @@ if (isset($_SESSION['user_id'])) {
     
   <?php if(isset($_SESSION['user_id']) && (int)$_SESSION['user_id'] === 1 && isset($conn)): ?>
     <a href="admin_users.php">👥 Utilisateurs</a>
+    <a href="admin_messages.php">📩 Messages</a>
     <a href="admin_coupons.php">🎟️ Coupons</a>
     <a href="admin_annonces.php">📢 Annonces</a>
   <?php endif; ?>
+    <a href="contact_admin.php">📧 Contact</a>
     <a href="apropos.php">🧭 À propos</a>
   <?php if (isset($_SESSION['user_id'])): ?>
     <a href="tos.php" style="margin-bottom: 35px;">✒️ Conditions de Service</a>
@@ -226,6 +232,19 @@ $totalNotifCount = $notifCount + $pendingRestoCount;
 .sidebar::-webkit-scrollbar-thumb:hover {
   background: rgba(247, 246, 246, 0.7);
 }
+</style>
+<!-- style bouton solde -->
+<style>
+    .sidebar a[href="approvisionnement.php"] {
+        background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(102, 187, 106, 0.1));
+        border-left: 4px solid #4caf50;
+        font-weight: 600;
+    }
+    
+    .sidebar a[href="approvisionnement.php"]:hover {
+        background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(102, 187, 106, 0.2));
+        color: #4caf50;
+    }
 </style>
 
 <script>

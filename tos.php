@@ -271,7 +271,7 @@ $connected = isset($_SESSION['user_id']);
       </div>
     </div>
 
-    <p><a href="<?= $connected ? 'home.php' : 'index.php' ?>" class="back-link">← Retour</a></p>
+    <p><a style="margin-top: 0px;" href="<?= $connected ? 'home.php' : 'index.php' ?>" class="back-link">← Retour</a></p>
   </main>
 
   <!-- Scripts 3D -->

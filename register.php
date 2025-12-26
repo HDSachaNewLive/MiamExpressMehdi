@@ -83,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </form>
 
     <p>Déjà inscrit ? <a href="login.php">Connecte-toi</a></p>
-    <p><a href="index.php">Retour</a></p>
+    <p><a href="<?= isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : 'index.php' ?>">Retour</a></p>
   </main>
 
 <!-- scripts du fond 3D -->

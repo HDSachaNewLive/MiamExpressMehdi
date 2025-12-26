@@ -77,8 +77,27 @@ if (isset($_SESSION['coupon'])) {
         }
     }
 }
+//gestion de utilisation solde
+$solde_utilise = 0;
+$use_solde = isset($_POST['use_solde']) && $_POST['use_solde'] == '1';
 
-$final_total = max(0, $total - $discount_amount);
+if ($use_solde) {
+    $solde_amount = (float)($_POST['solde_amount'] ?? 0);
+    
+    //récup le solde actuel de l'utilisateur
+    $stmt = $conn->prepare("SELECT solde FROM users WHERE user_id = ?");
+    $stmt->execute([$uid]);
+    $user_data = $stmt->fetch();
+    $solde_disponible = (float)($user_data['solde'] ?? 0);
+    
+    // Vérifier que le montant demandé est valide
+    if ($solde_amount > 0 && $solde_amount <= $solde_disponible) {
+        // Ne pas utiliser plus que le total de la commande
+        $solde_utilise = min($solde_amount, $total - $discount_amount);
+    }
+}
+
+$final_total = max(0, $total - $discount_amount - $solde_utilise);
 
 // Numéro utilisateur pour cette commande
 $stmt = $conn->prepare("SELECT MAX(numero_utilisateur) AS max_num FROM commandes WHERE user_id = ?");
@@ -91,10 +110,26 @@ $conn->beginTransaction();
 
 try {
     // INSERT unique dans commandes
-    $stmt = $conn->prepare("INSERT INTO commandes (user_id, numero_utilisateur, montant_total, montant_reduction, coupon_id, mode_paiement, date_commande, statut) VALUES (?, ?, ?, ?, ?, ?, NOW(), 'en_attente')");
-    $stmt->execute([$uid, $numero_utilisateur, $final_total, $discount_amount, $coupon_id, $mode]);
+    $stmt = $conn->prepare("
+    INSERT INTO commandes (user_id, numero_utilisateur, montant_total, montant_reduction, montant_solde_utilise, coupon_id, mode_paiement, date_commande, statut) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), 'en_attente')
+    ");
+    $stmt->execute([$uid, $numero_utilisateur, $final_total, $discount_amount, $solde_utilise, $coupon_id, $mode]);
     $commande_id = $conn->lastInsertId();
 
+    // Si du solde a été utilisé, le déduire du compte utilisateur
+    if ($solde_utilise > 0) {
+        $stmt = $conn->prepare("UPDATE users SET solde = solde - ? WHERE user_id = ?");
+        $stmt->execute([$solde_utilise, $uid]);
+        
+        // Enregistrer l'utilisation du solde
+        $stmt = $conn->prepare("
+            INSERT INTO utilisations_solde (user_id, commande_id, montant_utilise, date_utilisation) 
+            VALUES (?, ?, ?, NOW())
+        ");
+        $stmt->execute([$uid, $commande_id, $solde_utilise]);
+    }
+    
     // Insérer lignes
     $ins_item = $conn->prepare("INSERT INTO commande_plats (commande_id, plat_id, quantite, prix_unitaire) VALUES (?, ?, ?, ?)");
     foreach ($items as $it) {

@@ -108,10 +108,10 @@ $error = ''; // pas de POST dans cette page donc pas d'erreur a verifier (inutil
       </div>
     </div>
 
-    <p><a href="<?= isset($_SESSION['user_id']) ? 'home.php' : 'index.php' ?>" class="back-link">⬅ Retour</a></p>
+    <p><a style="margin-top: 0px;" href="<?= isset($_SESSION['user_id']) ? 'home.php' : 'index.php' ?>" class="back-link">⬅ Retour</a></p>
   </main>
 
-  <!-- Scripts3D ma gueule -->
+  <!-- Scripts du fond3D ma gueule -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/vanta/dist/vanta.waves.min.js"></script>
 

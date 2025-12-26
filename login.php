@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // limite tentatives
     $limite_tentatives = 5;
 
-    // Limite tentatives par IP
+    // Limite tentatives par IP ET EMAIL
     $stmt = $conn->prepare("
         SELECT COUNT(*) 
         FROM tentatives_conn
@@ -53,8 +53,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $user = $stmt->fetch();
 
             if ($user && !$user['compte_actif']) {
-                $error = "Votre compte a été désactivé. Contactez l'administrateur.";
-                
+                $error = "Votre compte a été désactivé. <a href='contact_admin.php' class='btn-contact'>Contactez l'administrateur.</a>";
+                 
                 // Enregistrer la tentative
                 $stmt = $conn->prepare("
                   INSERT INTO tentatives_conn (ip, email, attempt_time)
@@ -126,7 +126,7 @@ unset($_SESSION['success']);
     <?php endif; ?>
 
     <?php if ($error): ?>
-      <div class="error"><?= htmlspecialchars($error) ?></div>
+      <div class="error"><?= $error ?></div>
     <?php endif; ?>
 
     <form method="post" action="login.php" class="form">
@@ -260,6 +260,23 @@ VANTA.WAVES({
 .info-box p:first-child {
   font-weight: 700;
   color: #2196F3;
+}
+
+.btn-contact {
+  color: #ff6b6b;
+  font-weight: 700;
+  text-decoration: none;
+  padding: 0.3rem 0.8rem;
+  background: rgba(255, 107, 107, 0.1);
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  display: inline-block;
+}
+
+.btn-contact:hover {
+  background: rgba(255, 107, 107, 0.2);
+  transform: scale(1.025);
+  color: #ff8c42;
 }
 </style>
   </div>

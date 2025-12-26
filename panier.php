@@ -276,6 +276,7 @@ $adresse_pref = $user['adresse_livraison'] ?? '';
     <?php endif; ?>
     <p><a href="restaurants.php">⬅ Continuer à commander</a></p>
     <p><a href="home.php">🏠 Retour à l'accueil</a></p>
+    <p><a href="<?= isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : 'restaurants.php' ?>">⬅ Retour</a></p>
   </main>
 <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/vanta/dist/vanta.waves.min.js"></script>

@@ -86,14 +86,13 @@ $couleur_vanta = $user['couleur_vanta'] ?? '#dba1b2';
   <title><?= htmlspecialchars($user['nom_user']) ?> - Profil FoodHub</title>
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="profil_public.css">
-  <?php if ($connected): ?>
-    <?php include 'sidebar.php'; ?>
-  <?php endif; ?>
+  <?php include 'slider_son.php'; ?>
+  <?php include 'sidebar.php'; ?>
 </head>
 <body>
   <?php if ($connected): ?>
     <audio id="player" autoplay loop>
-      <source src="assets/Account Settings Wii U System Music.mp3" type="audio/mpeg">
+      <source src="assets/3DS-Theme-Shop.mp3" type="audio/mpeg">
     </audio>
     <?php include "slider_son.php"; ?>
   <?php endif; ?>

@@ -30,8 +30,13 @@ endif;
       <a href="restaurants.php" class="btn btn-alt" data-no-ajax>Voir les restaurants</a>
     </div>
   </div>
-  
 </main>
+  <div class="contact-info" style="margin-top: 0px;top:0px; text-align: center;">
+    <p>Besoin d'aide ? <a href="contact_admin.php"><button class="btn-contact">Contactez l'administrateur</button> <a>
+      
+    </a>
+  </a></p>
+  </div>
 <style>
 
 #bg-video {
@@ -73,6 +78,7 @@ endif;
   backdrop-filter: blur(12px);
   background: rgba(255, 255, 255, 0.29); 
   padding: 90px;
+  margin-bottom: 5px;
   border-radius: 15px;
   box-shadow: 0 8px 25px var(--shadow);
 }
@@ -88,8 +94,8 @@ endif;
   font-size: 1.5rem;
   margin-bottom: 40px;
   animation: fadeScale 1.8s ease forwards;
-}/* --- STYLE WII U AMÉLIORÉ --- */
-/* --- STYLE BOUTONS WII U --- */
+}
+
 .links a {
   display: inline-block;
   min-width: 200px;
@@ -137,7 +143,7 @@ endif;
   transition: box-shadow 0.25s ease;
 }
 
-/* --- HOVER : effet Wii U bleu brillant --- */
+/* liens effet Wii U bleu brillant --- */
 .links a:hover {
   color: #fff;
   background: linear-gradient(180deg, rgba(0,180,255,0.85) 0%, rgba(0,120,220,0.9) 100%);
@@ -169,7 +175,29 @@ endif;
   0% {opacity: 0; transform: scale(0.8);}
   100% {opacity: 1; transform: scale(1);}
 }
+p .btn-contact {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 0.6rem;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+    font-family: 'HSR', sans-serif;
+    margin-bottom: -60px;
+    margin-top: 0px;
+    animation: fadeScale 1.8s ease forwards;
+}
 
+p .btn-contact {
+    background: rgba(255, 152, 0, 0.3);
+    color: #f08011ff;
+}
+
+p .btn-contact:hover {
+    background: rgba(255, 152, 0, 0.5);
+    transform: scale(1.03);
+}
 </style>
   </div>
 </div>
@@ -201,5 +229,5 @@ endif;
 
 </body>
 <video autoplay muted loop id="bg-video">
-  <source src="assets/fond WiiU.webm" type="video/webm">Ton navigateur ne supporte pas la vidéo de fond 😢</video>
+  <source src="assets/fond WiiU.webm" type="video/webm">Ton navigateur ne supporte pas la vidéo de fond</video>
 </html>

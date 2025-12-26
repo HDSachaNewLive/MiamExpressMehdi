@@ -224,6 +224,28 @@ CREATE TABLE IF NOT EXISTS `forum_topics` (
 -- --------------------------------------------------------
 
 --
+-- Structure de la table `messages_admin`
+--
+
+DROP TABLE IF EXISTS `messages_admin`;
+CREATE TABLE IF NOT EXISTS `messages_admin` (
+  `message_id` int NOT NULL AUTO_INCREMENT,
+  `nom` varchar(100) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `sujet` varchar(200) NOT NULL,
+  `message` text NOT NULL,
+  `type_message` enum('general','compte','signalement','technique','suggestion','autre') DEFAULT 'general',
+  `lu` tinyint(1) DEFAULT '0',
+  `date_envoi` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`message_id`),
+  KEY `idx_lu` (`lu`),
+  KEY `idx_type` (`type_message`),
+  KEY `idx_date` (`date_envoi`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Structure de la table `notifications`
 --
 
