@@ -39,8 +39,9 @@ if (isset($_SESSION['user_id'])) {
   <a href="restaurants.php">🍽️ Restaurants</a>
   <a href="panier.php">🛒 Panier</a>
   <a href="suivi_commande.php" class="sidebar-link">📦 Suivi des commandes</a>
-  <a href="mes_favoris.php">❤️ Mes Favoris</a>
+  
     <?php if(!isset($_SESSION['user_id'])): ?>
+    <a href="mes_favoris.php">❤️ Mes Favoris</a>
     <a href="contact_admin.php">📧 Contact</a>
     <?php endif; ?>
     

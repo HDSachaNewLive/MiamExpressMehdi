@@ -37,10 +37,16 @@ $favoris = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </head>
 <body>
     <audio id="player" autoplay loop>
-        <source src="assets/Nintendo 3DS Internet Settings Theme (High Quality, 2022 Remastered).mp3" type="audio/mpeg">
+        <source src="assets/Blue Archive OST 25 - Future Bossa.mp3" type="audio/mpeg">
     </audio>
     <?php include 'slider_son.php'; ?>
-
+  <style>
+    #volume-slider {
+    background: linear-gradient(135deg, #54dc5de1, #7ff687ff); }
+    #volume-button {
+    background: linear-gradient(135deg, #40db5fff, #93f2aaff);
+    }
+  </style>
     <main class="container" style="margin-top: 120px;">
         <h1 style="color: #ff6b6b; text-align: center; margin-bottom: 2rem;">❤️ Mes restaurants favoris</h1>
 
