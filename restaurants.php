@@ -5,15 +5,83 @@ error_reporting(E_ALL);
 session_start();
 require_once 'db/config.php';
 $connected = isset($_SESSION['user_id']);
+$uid = $connected ? (int)$_SESSION['user_id'] : 0;
 
-// Récupère les restos triés par user_id
-$stmt = $conn->query("
-  SELECT r.*, u.nom_user AS owner_name, u.user_id AS owner_id
-  FROM restaurants r
-  LEFT JOIN users u ON r.proprietaire_id = u.user_id
-  WHERE r.verified = 1
-  ORDER BY u.user_id, r.nom_restaurant
-");
+// Récupère les restos triés par user_id + favoris
+if ($connected) {
+    $stmt = $conn->prepare("
+        SELECT r.*, 
+               AVG(a.note) as note_moyenne,
+               COUNT(DISTINCT a.avis_id) as nb_avis,
+               CASE WHEN f.favori_id IS NOT NULL THEN 1 ELSE 0 END as is_favorite
+        FROM restaurants r
+        LEFT JOIN avis a ON r.restaurant_id = a.restaurant_id
+        LEFT JOIN favoris f ON r.restaurant_id = f.restaurant_id AND f.user_id = ?
+        WHERE r.verified = 1 AND r.proprietaire_id = ?
+        GROUP BY r.restaurant_id
+        ORDER BY r.nom_restaurant
+    ");
+    $stmt->execute([$uid, $uid]);
+    $mes_restos = $stmt->fetchAll();
+
+    $stmt = $conn->prepare("
+        SELECT r.*, 
+               AVG(a.note) as note_moyenne,
+               COUNT(DISTINCT a.avis_id) as nb_avis,
+               CASE WHEN f.favori_id IS NOT NULL THEN 1 ELSE 0 END as is_favorite
+        FROM restaurants r
+        LEFT JOIN avis a ON r.restaurant_id = a.restaurant_id
+        LEFT JOIN favoris f ON r.restaurant_id = f.restaurant_id AND f.user_id = ?
+        WHERE r.verified = 1 AND r.proprietaire_id != ?
+        GROUP BY r.restaurant_id
+        ORDER BY r.nom_restaurant
+    ");
+    $stmt->execute([$uid, $uid]);
+    $autres_restos = $stmt->fetchAll();
+} else {
+    $stmt = $conn->query("
+        SELECT r.*, 
+               AVG(a.note) as note_moyenne,
+               COUNT(DISTINCT a.avis_id) as nb_avis,
+               0 as is_favorite
+        FROM restaurants r
+        LEFT JOIN avis a ON r.restaurant_id = a.restaurant_id
+        WHERE r.verified = 1
+        GROUP BY r.restaurant_id
+        ORDER BY r.nom_restaurant
+    ");
+    $mes_restos = [];
+    $autres_restos = $stmt->fetchAll();
+}
+
+// Récupère les restos triés par user_id AVEC is_favorite
+if ($connected) {
+    $stmt = $conn->prepare("
+      SELECT r.*, 
+             u.nom_user AS owner_name, 
+             u.user_id AS owner_id, 
+             r.nom_restaurant,
+             CASE WHEN f.favori_id IS NOT NULL THEN 1 ELSE 0 END as is_favorite
+      FROM restaurants r
+      LEFT JOIN users u ON r.proprietaire_id = u.user_id
+      LEFT JOIN favoris f ON r.restaurant_id = f.restaurant_id AND f.user_id = ?
+      WHERE r.verified = 1
+      ORDER BY u.user_id, r.nom_restaurant
+    ");
+    $stmt->execute([$uid]);
+} else {
+    $stmt = $conn->query("
+      SELECT r.*, 
+             u.nom_user AS owner_name, 
+             u.user_id AS owner_id, 
+             r.nom_restaurant,
+             0 as is_favorite
+      FROM restaurants r
+      LEFT JOIN users u ON r.proprietaire_id = u.user_id
+      WHERE r.verified = 1
+      ORDER BY u.user_id, r.nom_restaurant
+    ");
+}
 $restaurants = $stmt->fetchAll();
 
 // organiser par propriétaire
@@ -118,7 +186,16 @@ foreach ($restaurants as $r) {
           <?php foreach ($restos as $r): ?>
 
             <div class="resto-card">
-              <h3><?= htmlspecialchars($r['nom_restaurant']) ?></h3>
+              <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <h3><?= htmlspecialchars($r['nom_restaurant']) ?></h3>
+                  <?php if ($connected): ?>
+                    <button class="btn-favorite <?= $r['is_favorite'] ? 'active' : '' ?>" 
+                      data-restaurant-id="<?= $r['restaurant_id'] ?>"
+                      title="<?= $r['is_favorite'] ? 'Retirer des favoris' : 'Ajouter aux favoris' ?>">
+                    <span class="favorite-icon"><?= $r['is_favorite'] ? '❤️' : '🤍' ?></span>
+                  </button>
+                <?php endif; ?>
+              </div>
               <p><?= htmlspecialchars($r['adresse']) ?></p>
               <p><strong><?= htmlspecialchars($r['categorie']) ?></strong></p>
               <p><?= htmlspecialchars(substr($r['description_resto'],0,80)) ?>...</p>
@@ -411,13 +488,13 @@ window.addEventListener('load', function() {
     });
   }
 
-  // Bouton suivant
+  // btn suivant
   nextBtn.onclick = function() {
     current = (current + 1) % playlist.length;
     playTrack();
   };
 
-  // Bouton précédent
+  // btnouton précédent
   prevBtn.onclick = function() {
     current = (current - 1 + playlist.length) % playlist.length;
     playTrack();
@@ -429,10 +506,139 @@ window.addEventListener('load', function() {
     playTrack();
   };
 
-  // Démarrer
+  // jouer la piste
   playTrack();
 });
 </script>
+<!-- gestion des favoris -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.btn-favorite').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const restaurantId = btn.dataset.restaurantId;
+            
+            try {
+                const response = await fetch('toggle_favori.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: `restaurant_id=${restaurantId}`
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    btn.classList.toggle('active');
+                    const icon = btn.querySelector('.favorite-icon');
+                    icon.textContent = data.is_favorite ? '❤️' : '🤍';
+                    btn.title = data.is_favorite ? 'Retirer des favoris' : 'Ajouter aux favoris';
+                    
+                    // Animation
+                    btn.style.transform = 'scale(1.3)';
+                    setTimeout(() => btn.style.transform = 'scale(1)', 200);
+                    
+                    // Message flash
+                    showMessage(
+                        data.is_favorite ? '❤️ Ajouté aux favoris !' : '💔 Retiré des favoris',
+                        'success'
+                    );
+                } else if (data.error === 'not_logged') {
+                    alert('Connecte-toi pour ajouter des favoris !');
+                }
+            } catch (err) {
+                console.error(err);
+                showMessage('❌ Erreur de connexion', 'error');
+            }
+        });
+    });
+});
 
+function showMessage(text, type = 'success') {
+    const oldMsg = document.querySelector('.flash-message');
+    if (oldMsg) oldMsg.remove();
+    
+    const msg = document.createElement('div');
+    msg.className = `flash-message ${type}`;
+    msg.textContent = text;
+    document.body.appendChild(msg);
+    
+    setTimeout(() => {
+        msg.classList.add('hide');
+        setTimeout(() => msg.remove(), 400);
+    }, 3000);
+}
+</script>
+
+<style>
+.btn-favorite {
+    background: rgba(240, 168, 168, 0.33);
+    border: none;
+    cursor: pointer;
+    font-size: 1.5rem;
+    transition: transform 0.2s ease;
+    padding: 0.3rem;
+    position: relative;
+    margin-top: -10px;
+    margin-right: -10px;
+    z-index: 10;
+}
+
+.btn-favorite:hover {
+    transform: scale(1.2);
+}
+
+.btn-favorite.active .favorite-icon {
+    animation: heartBeat 0.3s ease;
+}
+
+@keyframes heartBeat {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+}
+
+.flash-message {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    color: #333;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-family: 'HSR', sans-serif;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    animation: slideIn 0.3s ease;
+    z-index: 10000;
+    font-weight: 600;
+}
+
+.flash-message.success {
+    border-left: 4px solid #4CAF50;
+}
+
+.flash-message.error {
+    border-left: 4px solid #ff6b6b;
+}
+
+.flash-message.hide {
+    opacity: 0;
+    transform: translate(-50%, -10px);
+    transition: all 0.4s;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -20px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+</style>
 </body>
 </html>

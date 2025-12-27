@@ -143,7 +143,7 @@ $type_labels = [
   <meta charset="utf-8">
   <title><?= htmlspecialchars($restaurant['nom_restaurant']) ?> - Menu</title>
   <link rel="stylesheet" href="assets/style.css">
-  <link rel="stylesheet" href="assets\recommandation.css">
+  <link rel="stylesheet" href="assets/recommandation.css">
   <?php include 'sidebar.php'; ?>
 </head>
 <body>

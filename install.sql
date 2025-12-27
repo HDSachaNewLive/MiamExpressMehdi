@@ -378,6 +378,25 @@ CREATE TABLE IF NOT EXISTS `users` (
   UNIQUE KEY `email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `favoris`
+--
+
+CREATE TABLE IF NOT EXISTS `favoris` (
+  `favori_id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `restaurant_id` int NOT NULL,
+  `date_ajout` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`favori_id`),
+  UNIQUE KEY `unique_favori` (`user_id`,`restaurant_id`),
+  KEY `user_id` (`user_id`),
+  KEY `restaurant_id` (`restaurant_id`),
+  CONSTRAINT `favoris_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
+  CONSTRAINT `favoris_ibfk_2` FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`restaurant_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 -- =========================
 -- DONNÉES DE DÉMO
 -- =========================
