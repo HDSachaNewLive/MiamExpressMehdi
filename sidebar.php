@@ -41,11 +41,12 @@ if (isset($_SESSION['user_id'])) {
   <a href="suivi_commande.php" class="sidebar-link">📦 Suivi des commandes</a>
   
     <?php if(!isset($_SESSION['user_id'])): ?>
-    <a href="mes_favoris.php">❤️ Mes Favoris</a>
+    
     <a href="contact_admin.php">📧 Contact</a>
     <?php endif; ?>
     
   <?php if (isset($_SESSION['user_id'])): ?>
+    <a href="mes_favoris.php">❤️ Mes Favoris</a>
     <a href="forum.php">💬 Discussion</a>
     <a href="notifications.php" class="notif-link">
       🔔 Notifications

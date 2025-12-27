@@ -106,7 +106,8 @@ $favoris = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
         <?php endif; ?>
 
-        <p><a href="restaurants.php" class="back-link" style="margin-bottom: -10px;">← Retour aux restaurants</a></p>
+        <p><a href="restaurants.php" class="back-link">← Retour aux restaurants</a></p>
+        <p><a href="<?= isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : 'home.php' ?>" class="back-link" style="margin-top: 0px;margin-bottom: -20px;">← Retour</a></p>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
@@ -159,6 +160,7 @@ $favoris = $stmt->fetchAll(PDO::FETCH_ASSOC);
         border-radius: 1.5rem;
         max-width: 1200px;
         margin: 120px auto;
+        padding-bottom: 1.5rem;
     }
 
     .btn-favorite {
