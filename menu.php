@@ -201,10 +201,12 @@ $type_labels = [
             <h3><?= htmlspecialchars($p['nom_plat']) ?></h3>
             <p><?= htmlspecialchars($p['description_plat'] ?? "Aucune description") ?></p>
             <p><strong><?= number_format($p['prix'], 2) ?> €</strong></p>
+            <?php if(isset($_SESSION['user_id'])): ?>
             <div class="add-to-cart" data-plat-id="<?= (int)$p['plat_id'] ?>">
               <input type="number" class="quantity-input" value="1" min="1" style="width:60px">
               <button class="btn add-to-cart-btn">🛒 Ajouter</button>
             </div>
+            <?php endif; ?>
           </div>
         <?php endforeach; ?>
       </div>
