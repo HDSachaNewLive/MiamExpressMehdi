@@ -1,5 +1,5 @@
 <?php
-require_once "db/config.php";
+require "db/config.php";
 session_start();
 
 if (!isset($_SESSION["user_id"])) {
@@ -11,7 +11,7 @@ $user_id = (int)$_SESSION["user_id"];
 
 // Gestion vérification restos (super-admin)
 $is_owner = ($user_id === 1);
-
+$siteOwnerId = 1;
 // --- supprimer notif si demandé ---
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
@@ -205,10 +205,10 @@ $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <p><a href="<?= isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : 'home.php' ?>" class="back-link">⬅ Retour à l’accueil</a></p>
 
 </main>
-<?php if($is_owner): ?>
-<main class="container">
+
   <!-- Section vérification restos (super-admin basé sur user_id = 1) -->
-<?php if($is_owner): ?>
+<?php if($siteOwnerId === $_SESSION["user_id"]): ?>
+<main class="container">
 
 <h2>🛠 Vérification des restaurants</h2>
 <?php
@@ -258,9 +258,7 @@ else:
     echo "<p>Aucun restaurant en attente pour le moment 🍃</p>";
 endif;
 endif;
-endif;
 ?>
-
 
 </main>
 <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
