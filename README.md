@@ -1,7 +1,7 @@
 # FoodHub - Plateforme de commande de repas en ligne
 FoodHub - La plateforme qui simplifie la commande de repas en ligne.
 
-## 📋 Table des matières
+## Table des matières - Sommaire
 - [Description](#description)
 - [Fonctionnalités principales](#fonctionnalités-principales)
 - [Prérequis](#prérequis)
@@ -13,7 +13,7 @@ FoodHub - La plateforme qui simplifie la commande de repas en ligne.
 
 ---
 
-## 📖 Description
+## Description de foodhub:
 
 **FoodHub** est une plateforme web de commande et livraison de repas en ligne développée dans le cadre d'un projet BTS SIO. Elle permet aux utilisateurs de commander des plats auprès de plusieurs restaurants, de gérer leur panier, de suivre leurs commandes et de laisser des avis. Les propriétaires de restaurants peuvent gérer leurs établissements et consulter des statistiques détaillées.
 
@@ -55,7 +55,7 @@ FoodHub - La plateforme qui simplifie la commande de repas en ligne.
 
 ---
 
-## 🔧 Prérequis
+## Prérequis
 
 Avant de commencer l'installation, assurez-vous d'avoir :
 
@@ -76,7 +76,7 @@ Avant de commencer l'installation, assurez-vous d'avoir :
 
 ---
 
-## 📥 Installation
+## Installation
 
 ### Étape 1 : Installation de WAMP Server
 
@@ -264,7 +264,7 @@ Le script SQL `install.sql` crée automatiquement 3 restaurants de démonstratio
 
 ---
 
-## 📚 Guide d'utilisation
+## Guide d'utilisation
 
 ### Pour les nouveaux utilisateurs (Clients)
 
