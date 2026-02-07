@@ -224,7 +224,7 @@ Assurez-vous que le dossier `uploads/avis/` a les permissions d'écriture :
 1. Allez sur [http://localhost/foodhub](http://localhost/foodhub)
 2. Cliquez sur "S'inscrire"
 3. Remplissez le formulaire avec l'email : **email@example.com** (VEILLEZ A BIEN GARDER CET EMAIL PRECIEUSEMENT ET NE PAS L'OUBLIER/SUPPRIMER LE COMPTE!!!)
-4. Choisissez "Propriétaire" comme type de compte
+4. *Conseil* : Choisissez "Propriétaire" comme type de compte
 5. Une fois inscrit, ce compte aura les droits de super-administrateur
 
 **Privilèges du super-administrateur :**
