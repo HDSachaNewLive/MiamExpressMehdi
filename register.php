@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <form method="post" action="register.php" class="form">
       <input type="text" name="nom" placeholder="Nom complet" required value="<?= htmlspecialchars($_POST['nom'] ?? '') ?>"><br>
-      <input type="email" name="email" placeholder="Email" required value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"><br>
+      <input type="email" name="email" placeholder="Email" required value="<?= strtolower(htmlspecialchars($_POST['email'] ?? '')) ?>"><br>
       <input type="text" name="telephone" placeholder="Téléphone (optionnel)" value="<?= htmlspecialchars($_POST['telephone'] ?? '') ?>"><br>
       <input type="text" name="adresse_livraison" placeholder="Adresse de livraison (optionnel)" value="<?= htmlspecialchars($_POST['adresse_livraison'] ?? '') ?>"><br>
       <input type="password" name="motdepasse" placeholder="Mot de passe" required><br>
@@ -198,3 +198,4 @@ VANTA.WAVES({
 <script src="assets/3d-flip.js"></script>
 </body>
 </html>
+
