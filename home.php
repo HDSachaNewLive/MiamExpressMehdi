@@ -517,6 +517,25 @@ $annonces = $stmt->fetchAll();
     <?php endforeach; ?>
   </div>
 </div>
+
+<?php else: ?>
+<div class="annonces-sidebar" id="annonces-sidebar">
+  <div class="annonces-sidebar-header">
+    <h3>📢 Annonces</h3>
+  </div>
+  <div class="annonces-sidebar-content">
+      <div class="annonce-item">
+        <h4><?= htmlspecialchars("Pas d'annonces en cours") ?></h4>
+        <p class="annonce-text"><?= htmlspecialchars("Aucune annonce n'est en cours. Revenez plus tard pour de nouvelles actus !") ?></p>
+        <small class="annonce-date">
+          Aucune annonce disponible. <?php if ($_SESSION["user_id"]===1): ?>
+            <?php echo "<br><br>"; ?>
+            P.S : Vous êtes administrateur du site, vous pouvez dès maintenant créer une annonce !
+            <?php endif; ?>
+        </small>
+      </div>
+  </div>
+</div>
 <?php endif; ?>
 
 <style>
@@ -524,12 +543,12 @@ $annonces = $stmt->fetchAll();
 </style>
 
 <!-- btn flottant pour rouvrir la sidebar d'annonces -->
-<?php if (!empty($annonces)): ?>
+
 <button id="toggle-annonces" class="annonces-toggle-btn">
     📢
     <span class="annonces-count"><?= count($annonces) ?></span>
 </button>
-<?php endif; ?>
+
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const sidebar = document.getElementById('annonces-sidebar');
