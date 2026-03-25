@@ -1041,13 +1041,14 @@ ul {
     border-radius: 12px;
     padding: 12px 18px;
     text-align: left;
-    margin-top: -5px;
-    margin-bottom: -23px;
+    margin-top: -10px;
+    margin-bottom: -18px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     transition: all 0.3s ease;
-    color: rgba(53, 53, 53, 0.85);
+    color: rgba(53, 53, 53, 0.85);  
+    width: 37.01%;
   }
 
   ul li:hover {

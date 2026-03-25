@@ -820,7 +820,7 @@ document.addEventListener('DOMContentLoaded', () => {
 }
 
 .restaurant-card {
-  width: 37.01%;
+  min-width: 37.01%;
   background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
   border-radius: 1rem;
@@ -829,8 +829,7 @@ document.addEventListener('DOMContentLoaded', () => {
   border: 1px solid rgba(255, 255, 255, 0.3);
   transition: all 0.3s ease;
   animation: slideIn 0.6s ease-out;
-  margin: 0;
-  flex-shrink: 0;
+  margin: 0;  flex-shrink: 0;
 }
 
 .restaurant-card:hover {
