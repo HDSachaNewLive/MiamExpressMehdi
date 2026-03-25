@@ -265,13 +265,15 @@ $type_labels = [
     </form>
 
     <?php if (!empty($a['reponse'])): ?>
-      <p><em>Réponse du propriétaire: <?= nl2br(htmlspecialchars($a['reponse'])) ?></em></p>
+      <ul>
+      <li><em>Réponse du propriétaire: <?= nl2br(htmlspecialchars($a['reponse'])) ?></em></li>
+      </ul>
     <?php endif; ?>
 
     <?php if ($uid === (int)$restaurant['owner_id'] && $uid !== (int)$a['user_id']): ?>
       <form method="post" class="form">
         <input type="hidden" name="reply_comment_id" value="<?= (int)$a['avis_id'] ?>">
-        <input type="text" name="reply_text" placeholder="Répondre..." value="" class="form">
+        <input type="text" name="reply_text" placeholder="Répondre/Modifier la réponse..." value="" class="form">
         <button type="submit" class="btn btn-small">💬 Répondre</button>
       </form>
     <?php endif; ?>
@@ -1024,6 +1026,33 @@ button.btn-publish:hover {
 .btn-remove-image:hover {
   background: #ff4d4d;
   transform: scale(1.02);
+}
+
+/* style réponse proprio: */
+ul {
+      list-style: none;
+      padding: 0;
+      margin: 20px 0 30px;
+    }
+
+  ul li {
+    background: rgba(224, 119, 124, 0.38);
+    border: 1px solid rgba(225, 131, 131, 0.25);
+    border-radius: 12px;
+    padding: 12px 18px;
+    text-align: left;
+    margin-top: -5px;
+    margin-bottom: -23px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+    color: rgba(53, 53, 53, 0.85);
+  }
+
+  ul li:hover {
+    background: rgba(224, 119, 124, 0.5);;
+    transform: translateY(-2px);
 }
 </style>
 

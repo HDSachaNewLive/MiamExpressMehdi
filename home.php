@@ -941,6 +941,7 @@ document.addEventListener('DOMContentLoaded', () => {
   border-radius: 1rem;
   background: rgba(255, 255, 255, 0.1);
   padding: 1rem;
+  min-width: 100%;
   max-width: 100%;
   width: 100%;
 }
@@ -950,7 +951,7 @@ document.addEventListener('DOMContentLoaded', () => {
   transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   gap: 1rem;
   max-width: 100%;
-  width: fit-content;
+  width: 100%;
 }
 
 .review-card {
