@@ -13,7 +13,7 @@ FoodHub - La plateforme qui simplifie la commande de repas en ligne.
 
 ---
 
-## Description de foodhub:
+## Description de mon site FoodHub:
 
 **FoodHub** est une plateforme web de commande et livraison de repas en ligne développée dans le cadre d'un projet BTS SIO. Elle permet aux utilisateurs de commander des plats auprès de plusieurs restaurants, de gérer leur panier, de suivre leurs commandes et de laisser des avis. Les propriétaires de restaurants peuvent gérer leurs établissements et consulter des statistiques détaillées.
 
@@ -213,6 +213,23 @@ Assurez-vous que le dossier `uploads/avis/` a les permissions d'écriture :
 
 ---
 
+## ⚠️ ULTRA IMPORTANT POUR 3.0 : Configurer Google OAuth pour FoodHub
+
+Pour que la connexion via Google fonctionne, chaque utilisateur doit créer ses propres clés OAuth 2.0 depuis Google Cloud.
+
+### 1. Créer les clés
+1. Allez sur [Google Cloud Console](https://console.cloud.google.com/).
+2. Créez un projet ou utilisez un projet existant.
+4. Va dans **Identifiants** → **Créer des identifiants** → **ID client OAuth 2.0**.
+5. Ajoutez les URL de redirection dans votre ID CLIENT (SINON CA MARCHE PAS!!!) :  
+   <img width="780" height="529" alt="image" src="https://github.com/user-attachments/assets/2b6831c3-7983-487e-a088-0f5a3a404ee0" />
+
+### 2. Ajouter les variables d’environnement
+Créez un fichier `.env` à la racine du projet wamp64/www/foodhub/ qui contient tout ça (sans les guillemets):
+"
+GOOGLE_CLIENT_ID=ton_client_id
+GOOGLE_CLIENT_SECRET=ton_client_secret
+"
 ## ⚙️ Configuration
 
 ### Compte Administrateur/Super-Admin
@@ -380,7 +397,6 @@ Le script SQL `install.sql` crée automatiquement 3 restaurants de démonstratio
 - M. Bourdon (sudo rm -rf /*)
 - N.Kannan (idées et suggestions)
 - YanisCDN (Testeur originel)
-- Stelle.
 - O.D Eymen (soutien)
 
 **Testeur(s) :**
