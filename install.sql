@@ -462,6 +462,19 @@ ALTER TABLE `profil_stats`
   ADD CONSTRAINT `profil_stats_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 COMMIT;
 
+-- MIGRATION GOOGLE O AUTH --
+
+
+-- Ajouter la colonne google_id (identifiant unique renvoyé par Google)
+ALTER TABLE `users`
+    ADD COLUMN `google_id` VARCHAR(100) DEFAULT NULL AFTER `motdepasse`,
+    ADD UNIQUE KEY `uq_google_id` (`google_id`);
+
+-- Ajouter la colonne google_photo (URL de la photo de profil Google)
+ALTER TABLE `users`
+    ADD COLUMN `google_photo` VARCHAR(512) DEFAULT NULL AFTER `google_id`;
+/*                       G REGARDER UN TUTO JEU SÉ !               */
+
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
