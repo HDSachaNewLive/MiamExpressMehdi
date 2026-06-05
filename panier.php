@@ -277,8 +277,7 @@ $adresse_pref = $user['adresse_livraison'] ?? '';
     <p><a href="home.php">🏠 Retour à l'accueil</a></p>
     <p><a href="<?= isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : 'restaurants.php' ?>">⬅ Retour</a></p>
   </main>
-<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/vanta/dist/vanta.waves.min.js"></script>
+
 
 <style>
 .container {
@@ -581,7 +580,7 @@ h4 {
   transform: translateY(-2px);
   box-shadow: 0 6px 18px rgba(255, 77, 77, 0.5);
 }
-</sty>
+</style>
 
 <script>
 let recalculEnCours = null;
@@ -769,6 +768,9 @@ function showMessage(text, type = "success") {
   }, 3000);
 }
 </script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanta/dist/vanta.waves.min.js"></script>
+
 <script>
 //fixer hauteur du body à la hauteur de la fenêtre
 document.addEventListener('DOMContentLoaded', () => {
