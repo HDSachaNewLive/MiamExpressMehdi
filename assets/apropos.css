@@ -1,0 +1,179 @@
+  .container {
+    backdrop-filter: blur(15px);
+    background: rgba(30, 30, 30, 0.85);
+    padding: 2rem;
+    border-radius: 1.5rem;
+    max-width: 1000px;
+    margin: 100px auto;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  }
+
+  h1 {
+    text-align: center;
+    color: var(--accent);
+    margin-bottom: 2rem;
+    font-size: 2.5rem;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .apropos-section,
+  .contact-section,
+  .faq-section {
+    background: rgba(40, 40, 40, 0.6);
+    backdrop-filter: blur(10px);
+    border-radius: 1.2rem;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+  }
+
+  .apropos-section:hover,
+  .contact-section:hover,
+  .faq-section:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.3);
+    background: rgba(45, 45, 45, 0.7);
+  }
+
+  .section-content h2 {
+    color: var(--accent);
+    margin-bottom: 1.5rem;
+    font-size: 1.8rem;
+    border-bottom: 2px solid rgba(255, 107, 107, 0.4);
+    padding-bottom: 0.5rem;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  .section-content h3 {
+    color: #fff;
+    margin-bottom: 1rem;
+    font-size: 1.3rem;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  .section-content p {
+    color: #e0e0e0;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+  }
+
+  .mission-text {
+    background: rgba(50, 50, 50, 0.4);
+    padding: 1.5rem;
+    border-radius: 0.8rem;
+    margin-bottom: 1.5rem;
+    border-left: 4px solid var(--accent);
+    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.2);
+  }
+
+  .mission-text p {
+    margin-top: -0.1rem;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+    color: #e0e0e0;
+  }
+  .mission-text p:last-child {
+    margin-bottom: 0;
+    font-style: italic;
+    color: #b0b0b0;
+  }
+  .developer-info {
+    background: rgba(60, 80, 100, 0.3);
+    padding: 1.5rem;
+    border-radius: 0.8rem;
+    text-align: center;
+    border: 1px solid rgba(124, 198, 230, 0.2);
+  }
+
+  .developer-info p {
+    color: #e0e0e0;
+  }
+
+  .tester-info {
+    margin-top: 18px;
+    background: rgba(60, 80, 100, 0.3);
+    padding: 1.2rem;
+    border-radius: 0.7rem;
+    text-align: center;
+    border: 1px solid rgba(124, 198, 230, 0.2);
+  }
+  .tester-info p {
+    color: #e0e0e0;
+  }
+  .back-link {
+    display: inline-block;
+    margin-top: 2rem;
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  .back-link:hover {
+    color: var(--accent-dark);
+    transform: scale(1.05);
+  }
+
+
+  .faq-container {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .faq-item {
+    background: rgba(50, 50, 50, 0.4);
+    padding: 1.5rem;
+    border-radius: 0.8rem;
+    border-left: 4px solid var(--accent);
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .faq-item:hover {
+    background: rgba(60, 60, 60, 0.6);
+    transform: translateX(5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  }
+
+  .faq-item h3 {
+    margin-top: -0.1rem;
+    color: var(--accent);
+    margin-bottom: 0.8rem;
+    font-size: 1.2rem;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  .faq-item p {
+    color: #e0e0e0;
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  ul {
+      list-style: none;
+      padding: 0;
+      margin: 20px 0 30px;
+    }
+
+    ul li {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 12px;
+      padding: 12px 18px;
+      margin-bottom: 10px;
+      text-align: left;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.3s ease;
+      color: rgba(53, 53, 53, 0.85);
+    }
+
+    ul li:hover {
+      background: rgba(255, 255, 255, 0.22);
+      transform: translateY(-2px);
+    }

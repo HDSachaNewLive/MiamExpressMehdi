@@ -1,0 +1,482 @@
+<?php
+require "db/config.php";
+session_start();
+
+if (!isset($_SESSION["user_id"])) {
+  header("Location: login.php");
+  exit();
+}
+
+$user_id = (int) $_SESSION["user_id"];
+
+$is_owner = ($user_id === 1);
+$siteOwnerId = 1;
+
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+
+  if (isset($_POST["delete_notif_id"])) {
+    $nid = (int) $_POST["delete_notif_id"];
+    $conn->prepare("DELETE FROM notifications WHERE id = ? AND user_id = ?")
+      ->execute([$nid, $user_id]);
+    header("Location: notifications.php");
+    exit();
+  }
+
+  if ($is_owner && isset($_POST["ignorer_signalement_id"])) {
+    $sid = (int) $_POST["ignorer_signalement_id"];
+    $conn->prepare("UPDATE messages_admin SET reponse_admin = 'ignoré', lu = 1 WHERE message_id = ? AND type_message = 'signalement'")
+      ->execute([$sid]);
+    header("Location: notifications.php");
+    exit();
+  }
+
+  if ($is_owner && isset($_POST["verify_id"], $_POST["action"])) {
+    $rid = (int) $_POST["verify_id"];
+    $action = $_POST["action"];
+    if ($action === "accept") {
+      $conn->prepare("UPDATE restaurants SET verified = 1 WHERE restaurant_id = ?")
+        ->execute([$rid]);
+    } elseif ($action === "refuse") {
+      $conn->prepare("DELETE FROM plats WHERE restaurant_id = ?")->execute([$rid]);
+      $conn->prepare("DELETE FROM restaurants WHERE restaurant_id = ?")->execute([$rid]);
+    }
+    header("Location: notifications.php");
+    exit();
+  }
+}
+
+// Marquer toutes les notifs comme lues
+$conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ?")
+  ->execute([$user_id]);
+
+// Récupérer les notifications
+$stmt = $conn->prepare("
+    SELECT
+        n.id            AS notif_id,
+        n.type          AS notif_type,
+        n.message       AS notif_message,
+        n.created_at,
+        n.is_read,
+        n.restaurant_id,
+        n.avis_id,
+        r.nom_restaurant,
+        a.commentaire   AS avis_commentaire,
+        a.reponse       AS avis_reponse
+    FROM notifications n
+    LEFT JOIN restaurants r ON n.restaurant_id = r.restaurant_id
+    LEFT JOIN avis a        ON n.avis_id        = a.avis_id
+    WHERE n.user_id = ?
+    ORDER BY n.created_at DESC
+");
+$stmt->execute([$user_id]);
+$notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+?>
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <link rel="icon" type="image/x-icon" href="FoodHubLogo.ico">
+  <meta charset="UTF-8">
+  <title>🔔 Mes notifications - FoodHub</title>
+  <link rel="stylesheet" href="assets/style.css">
+  <audio autoplay>
+    <source src="https://raw.githubusercontent.com/HDSachaNewLive/foodhub-assets/main/confirm.wav" type="audio/mpeg">
+  </audio>
+  <?php include "sidebar.php"; ?>
+  <style>
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .notif-card {
+      backdrop-filter: blur(17px);
+      background: rgba(255, 255, 255, 0.15);
+      padding: 1.2rem;
+      border-radius: 1.2rem;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      margin-bottom: 1.2rem;
+      transition: all .18s ease;
+    }
+
+    .notif-card:hover {
+      transform: translateY(-3px);
+    }
+
+    .notif-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .notif-head h3 {
+      margin: 0;
+      font-size: 1.05rem;
+      color: var(--accent);
+    }
+
+    .notif-message {
+      margin: .6rem 0 0;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .notif-comment {
+      margin-top: 10px;
+      padding: 10px;
+      background: #fff7f4;
+      border-radius: 10px;
+      color: #444;
+      font-size: 0.95rem;
+      white-space: pre-wrap;
+    }
+
+    .notif-meta {
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: #888;
+    }
+
+    .notif-actions {
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: .55rem 0.9rem;
+      border-radius: .7rem;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: .9rem;
+    }
+
+    .btn:hover {
+      background: rgba(210, 74, 74, 0.65);
+    }
+
+    .btn-delete {
+      background: #ff6666;
+    }
+
+    .btn-delete:hover {
+      background: #e05555;
+    }
+
+    .notif-empty {
+      color: #666;
+      font-style: italic;
+      margin-top: 8px;
+    }
+
+    /* Notifications classiques */
+    .notif-section .notif-card {
+      backdrop-filter: blur(15px);
+      background: rgba(255, 255, 255, 0.15);
+      padding: 1.2rem;
+      border-radius: 1.2rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      margin-bottom: 1.5rem;
+      transition: transform .18s;
+    }
+
+    .notif-section .notif-card:hover {
+      transform: translateY(-3px);
+    }
+
+    .notif-section .notif-head h3 {
+      color: var(--accent);
+    }
+
+    /* Restos à vérifier */
+    .resto-card-container {
+      backdrop-filter: blur(10px);
+      background: rgba(255, 235, 205, 0.25);
+      padding: 1.5rem;
+      border-radius: 1.2rem;
+      border-left: 4px solid var(--accent);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+      margin-bottom: 1.8rem;
+      transition: all 0.4s ease;
+    }
+
+    .resto-card-container:hover {
+      transform: translateY(-4px);
+    }
+
+    .resto-card-container .notif-head h3 {
+      color: #d17a3f;
+    }
+
+    .resto-card-container ul {
+      padding-left: 1.2rem;
+      margin-top: 0.5rem;
+    }
+
+    .resto-card-container li {
+      margin-bottom: 0.3rem;
+    }
+
+    .resto-card-container .btn {
+      background: #f2a654;
+      color: white;
+      border-radius: .7rem;
+      padding: .55rem 0.9rem;
+    }
+
+    .resto-card-container .btn:hover {
+      background: #d1863f;
+    }
+
+    .resto-card-container .btn-delete {
+      background: #ff8c8c;
+    }
+
+    .resto-card-container .btn-delete:hover {
+      background: #e05555;
+    }
+
+    .badge-non-lu {
+      display: inline-block;
+      background: linear-gradient(135deg, #ff6b6b, #c0392b);
+      color: white;
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 0.3rem 0.6rem;
+      border-radius: 999px;
+      box-shadow: 0 2px 8px rgba(255, 107, 107, 0.45);
+    }
+  </style>
+</head>
+
+<body>
+  <audio id="player" autoplay loop>
+    <source src="https://raw.githubusercontent.com/HDSachaNewLive/foodhub-assets/main/20. Notifications.flac"
+      type="audio/flac">
+  </audio>
+  <?php include "slider_son.php"; ?>
+  <style>
+    #volume-slider {
+      background: linear-gradient(135deg, #f55858ff, #f4a8a8ff);
+    }
+
+    #volume-button {
+      background: linear-gradient(135deg, #f55858ff, #f7a6a6ff);
+    }
+  </style>
+
+  <!-- Notifications utilisateur -->
+  <main class="container">
+    <h2>🔔 Tes notifications</h2>
+
+    <?php if (!empty($notifications)): ?>
+      <div class="notif-section">
+        <?php foreach ($notifications as $n): ?>
+          <div class="notif-card <?= $n["is_read"] ? "read" : "unread" ?>">
+            <div class="notif-head">
+              <h3><?= htmlspecialchars($n["nom_restaurant"] ?? "Notification") ?></h3>
+            </div>
+            <div class="notif-message"><?= htmlspecialchars($n["notif_message"]) ?></div>
+
+            <?php
+            $notif_content = $n["notif_type"] === "reply" ? $n["avis_reponse"] : $n["avis_commentaire"];
+            if (!empty($notif_content)):
+              ?>
+              <div class="notif-comment"><?= htmlspecialchars(trim($notif_content)) ?></div>
+            <?php endif; ?>
+
+            <div class="notif-meta">Reçu le <?= date("d/m/Y à H:i", strtotime($n["created_at"])) ?></div>
+
+            <div class="notif-actions">
+              <?php if (!empty($n["restaurant_id"])):
+                $href = "menu.php?restaurant_id=" . (int) $n["restaurant_id"];
+                if (!empty($n["avis_id"]))
+                  $href .= "#comment-" . (int) $n["avis_id"];
+                ?>
+                <a class="btn" href="<?= $href ?>">👀 Voir</a>
+              <?php endif; ?>
+              <form method="post" style="margin:0;" onsubmit="return confirm('Supprimer cette notification ?');">
+                <input type="hidden" name="delete_notif_id" value="<?= (int) $n["notif_id"] ?>">
+                <button type="submit" class="btn btn-delete">❌ Supprimer</button>
+              </form>
+            </div>
+          </div>
+        <?php endforeach; ?>
+      </div>
+    <?php else: ?>
+      <p>Aucune notification pour le moment 🍃</p>
+    <?php endif; ?>
+
+    <p><a href="<?= isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : 'home.php' ?>" class="back-link">⬅
+        Retour à l'accueil</a></p>
+  </main>
+
+  <?php if ($siteOwnerId === $_SESSION["user_id"]): ?>
+
+    <!-- Vérification des restaurants -->
+    <main class="container">
+      <h2>🛠 Vérification des restaurants</h2>
+      <?php
+      $pendingStmt = $conn->prepare("SELECT * FROM restaurants WHERE verified = 0 ORDER BY restaurant_id DESC");
+      $pendingStmt->execute();
+      $pending = $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
+
+      if (!empty($pending)):
+        foreach ($pending as $resto):
+          $rid = (int) $resto["restaurant_id"];
+          $nom = htmlspecialchars($resto["nom_restaurant"] ?? "");
+          $desc = htmlspecialchars($resto["description_resto"] ?? "");
+          $addr = htmlspecialchars($resto["adresse"] ?? "");
+
+          echo "<div class='resto-card-container'>";
+          echo "<div class='notif-head'><h3 style='color:var(--accent);'>{$nom}</h3></div>";
+          echo "<p><strong>Description :</strong> {$desc}</p>";
+          echo "<p><strong>Adresse :</strong> {$addr}</p>";
+
+          $platsStmt = $conn->prepare("SELECT nom_plat, prix FROM plats WHERE restaurant_id = ?");
+          $platsStmt->execute([$rid]);
+          $plats = $platsStmt->fetchAll(PDO::FETCH_ASSOC);
+          if (!empty($plats)) {
+            echo "<h4>🍽 Plats proposés :</h4><ul>";
+            foreach ($plats as $p) {
+              $pnom = htmlspecialchars($p["nom_plat"] ?? "");
+              $pprix = htmlspecialchars($p["prix"] ?? "");
+              echo "<li>{$pnom} — {$pprix}€</li>";
+            }
+            echo "</ul>";
+          } else {
+            echo "<p class='notif-empty'>Aucun plat ajouté pour le moment.</p>";
+          }
+
+          echo "<div class='notif-actions'>";
+          echo "<form method='post' style='margin:0; display:flex; gap:10px;'>";
+          echo "<input type='hidden' name='verify_id' value='{$rid}'>";
+          echo "<button class='btn' name='action' value='accept'>✅ Accepter</button>";
+          echo "<button class='btn btn-delete' name='action' value='refuse'>❌ Refuser</button>";
+          echo "</form></div>";
+          echo "</div>";
+        endforeach;
+      else:
+        echo "<p>Aucun restaurant en attente pour le moment 🍃</p>";
+      endif;
+      ?>
+    </main>
+
+    <!-- Signalements à traiter -->
+    <main class="container">
+      <h2>🚩 Signalements à traiter</h2>
+      <?php
+      $sigStmt = $conn->prepare("
+        SELECT message_id, nom, sujet, message, date_envoi, lu
+        FROM messages_admin
+        WHERE type_message = 'signalement'
+          AND (reponse_admin IS NULL OR reponse_admin = '')
+        ORDER BY lu ASC, date_envoi DESC
+    ");
+      $sigStmt->execute();
+      $signalements = $sigStmt->fetchAll(PDO::FETCH_ASSOC);
+
+      if (!empty($signalements)):
+        foreach ($signalements as $sig):
+          // Extraire avis_id et resto_id du sujet
+          $avis_id_sig = null;
+          $resto_id_sig = null;
+          if (preg_match('/\[avis_id:(\d+)\]/', $sig['sujet'], $m)) $avis_id_sig = (int)$m[1];
+          if (preg_match('/\[resto_id:(\d+)\]/', $sig['sujet'], $m)) $resto_id_sig = (int)$m[1];
+
+          // Titre propre = sujet sans les balises [...]
+          $titre_propre = trim(preg_replace('/\[[^\]]+\]/', '', $sig['sujet']));
+          $lien_sig = ($avis_id_sig && $resto_id_sig)
+              ? "menu.php?restaurant_id={$resto_id_sig}#comment-{$avis_id_sig}"
+              : null;
+
+          echo "<div class='resto-card-container' style='border-left-color:#ff6b6b; margin-bottom: 1.2rem; background:rgba(255,107,107,0.07);'>";
+          echo "<div class='notif-head'>";
+          echo "<h3 style='color:#c0392b;'>🚩 De : " . htmlspecialchars($sig['nom']) . "</h3>";
+          if (!$sig['lu']) echo "<span class='badge-non-lu'>Nouveau</span>";
+          echo "</div>";
+          echo "<p><strong>Objet :</strong> " . htmlspecialchars($titre_propre) . "</p>";
+          echo "<p class='notif-meta'>Signalé le " . date('d/m/Y à H:i', strtotime($sig['date_envoi'])) . "</p>";
+          echo "<div class='notif-actions'>";
+          if ($lien_sig)
+          echo "<a class='btn' href='" . htmlspecialchars($lien_sig) . "' target='_blank' style='background:linear-gradient(135deg,#ff6b6b,#e84393);'>👁️ Voir</a>";
+          echo "<a class='btn' href='admin_messages.php' style='background:linear-gradient(135deg,#ff4757,#c0392b);'>⚙️ Gérer</a>";
+          echo "<form method='post' style='margin:0;' onsubmit='return confirm(\"Ignorer ce signalement ?\")'>";
+          echo "<input type='hidden' name='ignorer_signalement_id' value='" . (int)$sig['message_id'] . "'>";
+          echo "<button type='submit' class='btn' style='background:rgba(180,180,180,0.55);color:#333;font-weight:600;'>✕ Ignorer</button>";          
+          echo "</form></div>";
+          echo "</div>";
+        endforeach;
+      else:
+        echo "<p>Aucun signalement en attente 🍃</p>";
+      endif;
+      ?>
+    </main>
+
+  <?php endif; ?>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vanta/dist/vanta.waves.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const vantaBg = document.createElement('div');
+      vantaBg.id = 'vanta-bg';
+      vantaBg.style.cssText = `
+    position: fixed; top: 0; left: 0;
+    width: 110vw; height: 130vh;
+    z-index: 2; pointer-events: none;
+  `;
+      document.body.insertBefore(vantaBg, document.body.firstChild);
+      window.vantaEffect = VANTA.WAVES({
+        el: "#vanta-bg",
+        mouseControls: true, touchControls: true, gyroControls: false,
+        minHeight: 885, minWidth: 200, scale: 1, scaleMobile: 1,
+        color: 0xdba1b2, shininess: 25, waveHeight: 25, waveSpeed: 0.9, zoom: 0.9
+      });
+    });
+  </script>
+  <style>
+    body {
+      background: none !important;
+      overflow-x: clip;
+    }
+
+    canvas.vanta-canvas {
+      position: absolute !important;
+      top: 0;
+      left: 0;
+      width: fit-content;
+      height: fit-content;
+      z-index: 1 !important;
+    }
+  </style>
+
+<script>
+  // style transition transparent bouton signalement
+  document.querySelectorAll('.resto-card-container .btn').forEach(btn => {
+    btn.style.transition = 'all 0.3s ease';
+    btn.addEventListener('mouseenter', () => {
+      btn.style.opacity = '0.75';
+      btn.style.transform = 'translateY(-2px)';
+    });
+    btn.addEventListener('mouseleave', () => {
+      btn.style.opacity = '1';
+      btn.style.transform = 'translateY(0)';
+    });
+  });
+</script>
+</body>
+
+</html>

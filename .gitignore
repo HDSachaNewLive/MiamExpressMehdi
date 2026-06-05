@@ -1,0 +1,7 @@
+.env
+/vendor
+/legacy
+clé-site-captcha.txt
+clé-secrete-captcha.txt
+cloudflared.exe
+Run FoodHub.bat

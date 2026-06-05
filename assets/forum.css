@@ -1,0 +1,322 @@
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .forum-container {
+    backdrop-filter: blur(15px);
+    background: rgba(255, 255, 255, 0.25);
+    padding: 2rem;
+    border-radius: 1.5rem;
+    max-width: 1200px;
+    margin: 100px auto;
+  }
+  
+  #forum-stats {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    margin: 2rem 0;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 1rem;
+    left: 0%;
+  }
+  .forum-stats {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    margin: 2rem 0;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 1rem;
+    left: 0%;
+  }
+  
+  .stat-item {
+    text-align: center;
+  }
+  
+  .stat-number {
+    display: block;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #ff6b6b;
+  }
+  
+  .stat-label {
+    font-size: 0.9rem;
+    color: #666;
+  }
+  .a .back-link {
+    margin-top: 50px;
+  }
+  .forum-filters {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 2rem 0;
+  }
+  
+  .filter-btn {
+    padding: 0.7rem 1.5rem;
+    border-radius: 25px;
+    background: rgba(255, 255, 255, 0.3);
+    color: #333;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    cursor: pointer;
+    font-family: 'HSR', sans-serif;
+  }
+  
+  .filter-btn:hover {
+    background: rgba(255, 107, 107, 0.2);
+    border-color: #ff6b6b;
+  }
+  
+  .filter-btn.active {
+    background: linear-gradient(135deg, #ff6b6b, #ff8c42);
+    color: white;
+    border-color: #ff6b6b;
+  }
+  
+    .btn-create-topic {
+    display: block;
+    margin: 2rem auto;
+    padding: 1rem 1.8rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    background: linear-gradient(135deg, #ff6b6b, #ffc342ff);
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    text-decoration: none;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+    transition: all 0.35s ease;
+    overflow: hidden;
+    position: relative; 
+    width: fit-content;
+    font-family: 'HSR', sans-serif;
+}
+    .btn {
+    margin-top: -10px;
+    display: block;
+    padding: 1rem 1.8rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    background: linear-gradient(135deg, #ff6b6b, #ffc342ff);
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    text-decoration: none;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+    transition: all 0.35s ease;
+    overflow: hidden;
+    position: relative; 
+    width: fit-content;
+    font-family: 'HSR', sans-serif;
+  }
+
+  .btn:hover { 
+    transform: translateY(-4px) scale(1.03); 
+    box-shadow: 0 12px 25px rgba(0,0,0,0.25); 
+    background: linear-gradient(135deg, #ff8c42, #ff6b6b);
+  }
+  .btn::after {
+    content: "";
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%;
+    height: 100%;
+    background: rgba(255,255,255,0.25);
+    transition: all 0.3s ease;
+    border-radius: 14px;
+  }
+  .btn:hover::after { 
+    left: 0; 
+  }
+
+  .btn-create-topic::after {
+    content: "";
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%;
+    height: 100%;
+    background: rgba(255,255,255,0.25);
+    transition: all 0.4s ease;
+    border-radius: 14px;
+  }
+  
+
+  .btn-create-topic:hover::after { left: 0; }
+  .btn-create-topic:hover { 
+    transform: translateY(-4px) scale(1.03); 
+    box-shadow: 0 12px 25px rgba(0,0,0,0.25); 
+    background: linear-gradient(135deg, #ff8c42, #ff6b6b);
+  }
+  
+  .topic-form {
+    background: rgba(255, 255, 255, 0.3);
+    padding: 2rem;
+    padding-top: 13px;
+    border-radius: 1rem;
+    margin: 2rem 0;
+  }
+  
+  .topic-form label {
+    display: block;
+    margin-top: 1rem;
+    font-weight: 600;
+    color: #333;
+  }
+  
+  .topic-form input,
+  .topic-form select,
+  .topic-form textarea {
+    width: 100%;
+    padding: 0.8rem;
+    margin-top: 0.5rem;
+    border-radius: 0.8rem;
+    border: 1px solid rgba(0,0,0,0.1);
+    background: rgba(255, 255, 255, 0.6);
+    font-family: 'HSR', sans-serif;
+  }
+  
+  .topic-form textarea {
+    resize: none;
+    min-height: 120px;
+  }
+  
+  .form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+  
+  .topics-list {
+    margin-top: 2rem;
+  }
+  
+  .topic-card {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 1rem;
+    transition: all 0.3s ease;
+  }
+  
+  .topic-card:hover {
+    transform: translateY(-3px);
+    background: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+  
+  .topic-card.pinned {
+    border-left: 4px solid #ff6b6b;
+    background: rgba(255, 235, 205, 0.3);
+  }
+  
+  .topic-icon {
+    font-size: 2.5rem;
+  }
+  
+  .topic-info {
+    flex: 1;
+  }
+  
+  .topic-info h3 {
+    margin-top: 10px;
+    margin: 0 0 0.5rem 0;
+  }
+  
+  .topic-info h3 a {
+    color: #333;
+    text-decoration: none;
+    font-size: 1.2rem;
+    margin-top: 10px;
+  }
+  
+  .topic-info h3 a:hover {
+    color: #ff6b6b;
+  }
+  
+  .topic-meta {
+    font-size: 0.9rem;
+    color: #666;
+  }
+  
+  .badge-pinned,
+  .badge-locked {
+    display: inline-block;
+    padding: 0.3rem 0.7rem;
+    border-radius: 12px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-right: 0.5rem;
+    margin-bottom: 0.3rem; 
+  }
+  
+  .badge-pinned {
+    background: rgba(255, 193, 7, 0.2);
+    color: #856404;
+  }
+  
+  .badge-locked {
+    background: rgba(108, 117, 125, 0.2);
+    color: #495057;
+  }
+  
+  .topic-stats {
+    display: flex;
+    gap: 2rem;
+  }
+  
+  .topic-stats .stat {
+    text-align: center;
+  }
+  
+  .topic-stats .stat-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #ff6b6b;
+  }
+  
+  .topic-stats .stat-label {
+    font-size: 0.8rem;
+    color: #666;
+  }
+  
+  .info-box {
+    background: rgba(33, 150, 243, 0.1);
+    padding: 1rem;
+    border-radius: 0.8rem;
+    border-left: 4px solid #2196F3;
+    margin: 2rem 0;
+  }
+  
+  .empty-message {
+    text-align: center;
+    padding: 3rem;
+    color: #666;
+    font-style: italic;
+  }
+  
+  @media (max-width: 768px) {
+    .topic-card {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    
+    .topic-stats {
+      width: 100%;
+      justify-content: space-around;
+    }
+  }
