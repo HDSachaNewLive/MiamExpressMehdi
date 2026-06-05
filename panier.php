@@ -166,10 +166,6 @@ $adresse_pref = $user['adresse_livraison'] ?? '';
 <body>
   <audio id="player" autoplay loop> <source src="https://raw.githubusercontent.com/HDSachaNewLive/foodhub-assets/main/July 2014 Nintendo eShop Music.mp3" type="audio/mpeg"> </audio>
   <?php include "slider_son.php"; ?>
-  <style>#volume-widget {
-  right: -100px;
-  }
-  </style>
 
   <main class="container">
     <h2>🛒 Mon panier</h2>
@@ -585,7 +581,7 @@ h4 {
   transform: translateY(-2px);
   box-shadow: 0 6px 18px rgba(255, 77, 77, 0.5);
 }
-</style>
+</sty>
 
 <script>
 let recalculEnCours = null;
