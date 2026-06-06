@@ -429,7 +429,7 @@ span[id="profil"] {
 .bubble-wrapper {
     display: inline-flex;
     flex-direction: column;
-    max-width: 420px;
+    max-width: 500px;
     min-width: 0;
 }
 
@@ -569,10 +569,12 @@ span[id="profil"] {
 .reply-preview-text {
     font-size: 0.72rem;
     font-style: italic;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    opacity: 0.75;
+  overflow: hidden;
+  /* autorise le retour à la ligne et la coupure des mots trop longs */
+  white-space: normal;
+  opacity: 0.75;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* Bulle de réponse légèrement indentée */
