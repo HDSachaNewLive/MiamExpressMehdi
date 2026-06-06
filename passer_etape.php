@@ -3,4 +3,4 @@
 // Supprime le flag nouveau_compte_google si l'utilisateur clique sur "Passer cette étape"
 session_start();
 unset($_SESSION['nouveau_compte_google']);
-// Pas de redirect ici, le lien href="home.php" s'en charge côté HTML
+$_SESSION['nouveau_compte'] = true;

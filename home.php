@@ -180,6 +180,8 @@ $stmtForumTopics = $conn->prepare("
 $stmtForumTopics->execute();
 $forumTopicsRecents = $stmtForumTopics->fetchAll();
 //fin des requetes SQL
+
+require_once 'welcome_animation.php';
 ?>
 
 <!DOCTYPE html>
@@ -187,6 +189,14 @@ $forumTopicsRecents = $stmtForumTopics->fetchAll();
 <head>
   <link rel="icon" type="image/x-icon" href="FoodHubLogo.ico">
   <meta charset="utf-8">
+  <?php wl_render_head_styles(); ?>
+  <script>
+  window.__WL_CONFIG__ = {
+    show: <?= $show_welcome ? 'true' : 'false' ?>,
+    userId: <?= (int)$uid ?>,
+    reason: <?= json_encode($welcome_reason) ?>
+  };
+  </script>
   <title>Accueil - FoodHub</title>
   <link rel="stylesheet" href="assets/style.css">
   <link rel="stylesheet" href="assets/surprise.css">
@@ -196,8 +206,10 @@ $forumTopicsRecents = $stmtForumTopics->fetchAll();
   <?php include "slider_son.php"; ?>
 </head>
 
-<body>
-  
+<body<?= $show_welcome ? ' class="wl-pending"' : '' ?>>
+
+<?php wl_render_overlay(); ?>
+
 <audio id="player"></audio>
 <div id="music-controls">
   <button id="prev-track" class="music-btn" title="Piste précédente">⏮️</button>
@@ -2304,21 +2316,28 @@ window.addEventListener('pageshow', function(event) {
 <script src="https://cdn.jsdelivr.net/npm/vanta/dist/vanta.waves.min.js"></script>
 
 <script>
-window.vantaEffect = VANTA.WAVES({
-  el: "body",
-  mouseControls: true,
-  touchControls: true,
-  gyroControls: false,
-  minHeight: 1205.00,
-  minWidth: 200.00,
-  scale: 1.00,
-  scaleMobile: 1.00,
-  color: 0xf6b26b,
-  shininess: 60,
-  waveHeight: 22,
-  waveSpeed: 0.7,
-  zoom: 1.1
-})
+window.initHomeVanta = function () {
+  if (window.vantaEffect || typeof VANTA === 'undefined') return;
+  window.vantaEffect = VANTA.WAVES({
+    el: "body",
+    mouseControls: true,
+    touchControls: true,
+    gyroControls: false,
+    minHeight: 1205.00,
+    minWidth: 200.00,
+    scale: 1.00,
+    scaleMobile: 1.00,
+    color: 0xf6b26b,
+    shininess: 60,
+    waveHeight: 22,
+    waveSpeed: 0.7,
+    zoom: 1.1
+  });
+};
 </script>
+<script src="assets/js/welcome_animation.js"></script>
+<?php if (!$show_welcome): ?>
+<script>window.initHomeVanta();</script>
+<?php endif; ?>
 </body>
 </html>

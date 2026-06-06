@@ -63,6 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Supprimer le flag : cette page ne sera plus accessible
         unset($_SESSION['google_new_account']);
+        $_SESSION['nouveau_compte'] = true;
 
         $_SESSION['success'] = "✅ Profil complété avec succès ! Bienvenue sur FoodHub 🎉";
         header('Location: tos.php');

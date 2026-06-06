@@ -1,0 +1,5 @@
+# Sons d'animation de bienvenue (à importer par l'utilisateur) :
+# - welcome_circle.mp3  (2-4s, rotation du cercle de chargement)
+# - welcome_loop.mp3    (≥4s, boucle sauts de lettres)
+# - welcome_end.mp3     (stinger après la boucle lettres)
+# - welcome_burst.mp3   (apparition des 5 cercles finaux)

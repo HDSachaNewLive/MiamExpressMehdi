@@ -128,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_forgot']) && !i
         if ($email === '' || $motdepasse === '') {
             $error = "Email et mot de passe requis.";
         } else {
-            $stmt = $conn->prepare("SELECT user_id, nom_user, motdepasse, type_compte, adresse_livraison, compte_actif FROM users WHERE email = ?");
+            $stmt = $conn->prepare("SELECT user_id, nom_user, motdepasse, type_compte, adresse_livraison, compte_actif, derniere_connexion, date_creation FROM users WHERE email = ?");
             $stmt->execute([$email]);
             $user = $stmt->fetch();
 
@@ -140,9 +140,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_forgot']) && !i
                 $_SESSION['nom_user']          = $user['nom_user'];
                 $_SESSION['type_compte']       = $user['type_compte'];
                 $_SESSION['adresse_livraison'] = $user['adresse_livraison'];
-                // Mise à jour de la dernière connexion
-                $conn->prepare("
-                      UPDATE users SET derniere_connexion = NOW() WHERE user_id = ?")->execute([$user['user_id']]);
+
+                $last_conn_raw = $user['derniere_connexion'] ?? null;
+                $is_first_login = ($last_conn_raw === null || $last_conn_raw === '' || $last_conn_raw === '0000-00-00 00:00:00');
+                $prev_conn = $is_first_login ? 0 : (strtotime($last_conn_raw) ?: 0);
+                $created   = strtotime($user['date_creation'] ?? '') ?: time();
+                $six_am    = mktime(6, 0, 0, (int)date('n'), (int)date('j'), (int)date('Y'));
+                if ($is_first_login) {
+                    $_SESSION['nouveau_compte'] = true;
+                } elseif ((time() - $created) >= 86400 && time() >= $six_am && $prev_conn < $six_am) {
+                    $_SESSION['welcome_daily'] = true;
+                }
+
+                $conn->prepare("UPDATE users SET derniere_connexion = NOW() WHERE user_id = ?")
+                     ->execute([$user['user_id']]);
                 header("Location: home.php");
                 exit;
             } else {

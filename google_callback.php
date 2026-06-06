@@ -120,6 +120,8 @@ try {
         $refreshed = $stmt2->fetch();
 
         _set_session($refreshed);
+        _set_welcome_flags($refreshed);
+        _update_derniere_connexion($conn, (int)$refreshed['user_id']);
         header('Location: home.php');
         exit;
     }
@@ -148,6 +150,8 @@ try {
         $updated_user = $stmt->fetch();
 
         _set_session($updated_user);
+        _set_welcome_flags($updated_user);
+        _update_derniere_connexion($conn, (int)$updated_user['user_id']);
         $_SESSION['success'] = "✅ Votre compte Google a été lié à votre compte FoodHub existant !";
         header('Location: home.php');
         exit;
@@ -178,7 +182,8 @@ try {
     $new_user = $stmt->fetch();
 
     _set_session($new_user);
-    $_SESSION['google_new_account'] = true; // flag pour afficher la page de complétion
+    $_SESSION['google_new_account'] = true;
+    $_SESSION['nouveau_compte'] = true;
     header('Location: completer_profil.php');
     exit;
 
@@ -197,5 +202,22 @@ function _set_session(array $user): void {
     $_SESSION['nom_user'] = $user['nom_user'];
     $_SESSION['type_compte'] = $user['type_compte'];
     $_SESSION['adresse_livraison'] = $user['adresse_livraison'] ?? '';
-    $_SESSION['google_connected'] = true; // flag optionnel pour l'UI
+    $_SESSION['google_connected'] = true;
+}
+
+function _set_welcome_flags(array $user): void {
+    $last_raw = $user['derniere_connexion'] ?? null;
+    $is_first = ($last_raw === null || $last_raw === '' || $last_raw === '0000-00-00 00:00:00');
+    $prev_conn = $is_first ? 0 : (strtotime($last_raw) ?: 0);
+    $created   = strtotime($user['date_creation'] ?? '') ?: time();
+    $six_am    = mktime(6, 0, 0, (int)date('n'), (int)date('j'), (int)date('Y'));
+    if ($is_first) {
+        $_SESSION['nouveau_compte'] = true;
+    } elseif ((time() - $created) >= 86400 && time() >= $six_am && $prev_conn < $six_am) {
+        $_SESSION['welcome_daily'] = true;
+    }
+}
+
+function _update_derniere_connexion(PDO $conn, int $user_id): void {
+    $conn->prepare("UPDATE users SET derniere_connexion = NOW() WHERE user_id = ?")->execute([$user_id]);
 }

@@ -51,6 +51,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$nom, $email, $telephone, $hash, $adresse_livraison, $type_compte, $email_fictif, $email_verifie]);
             $new_uid = (int)$conn->lastInsertId();
 
+            // Connecter directement l'utilisateur pour éviter la perte du flag nouveau_compte
+            // au passage par login.php (le flag doit survivre jusqu'à home.php)
+            $_SESSION['user_id']           = $new_uid;
+            $_SESSION['nom_user']          = $nom;
+            $_SESSION['type_compte']       = $type_compte;
+            $_SESSION['adresse_livraison'] = $adresse_livraison;
+            $_SESSION['nouveau_compte']    = true; // déclenchera l'animation de bienvenue dans home.php
+
             if (!$email_fictif) {
                 // Envoyer l'email de vérification
                 $sent = fh_send_verify_email($conn, $new_uid, $nom, $email);

@@ -1,62 +1,75 @@
 <?php
 /**
  * welcome_animation.php
- * À inclure avec require_once AVANT le <!DOCTYPE html> dans home.php.
- * Nécessite : session_start() déjà fait, $conn (PDO) disponible, $_SESSION['user_id'] défini.
+ * Inclure avec require_once AVANT le <!DOCTYPE html> dans home.php.
+ * Nécessite : session_start(), $conn (PDO), $_SESSION['user_id'].
  */
 
 $show_welcome   = false;
 $welcome_reason = '';
 $_wl_uid        = (int)($_SESSION['user_id'] ?? 0);
 
-if ($_wl_uid > 0) {
-
-    /* ── Cas 1 : nouveau compte (flag posé par register.php) ── */
-    if (!empty($_SESSION['nouveau_compte'])) {
-        $show_welcome   = true;
-        $welcome_reason = 'new_account';
-        unset($_SESSION['nouveau_compte']);
-
-    } else {
-        /* ── Récupérer les champs nécessaires de l'utilisateur ── */
-        $_wl_stmt = $conn->prepare(
-            "SELECT date_inscription, derniere_connexion FROM users WHERE user_id = ?"
-        );
-        $_wl_stmt->execute([$_wl_uid]);
-        $_wl_row = $_wl_stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($_wl_row) {
-            $created_at  = strtotime($_wl_row['date_inscription']   ?? '') ?: 0;
-            $last_conn   = strtotime($_wl_row['derniere_connexion']  ?? '') ?: 0;
-            $age_hours   = $created_at ? (time() - $created_at) / 3600 : 999;
-
-            /* Compte de plus de 24h → première connexion après 6h du matin aujourd'hui */
-            if ($age_hours >= 24) {
-                $six_am_today = mktime(6, 0, 0, (int)date('n'), (int)date('j'), (int)date('Y'));
-                if ($last_conn < $six_am_today) {
-                    $show_welcome   = true;
-                    $welcome_reason = 'daily';
-                }
-            }
+if (!empty($_SESSION['nouveau_compte'])) {
+    $show_welcome   = true;
+    $welcome_reason = 'new_account';
+    // On ne fait PAS unset ici : le flag est supprimé par welcome_mark_shown.php
+    // après que le JS confirme que l'animation a bien été jouée.
+    // Cela évite que le flag disparaisse si home.php est chargé sans que le JS s'exécute.
+} elseif (!empty($_SESSION['welcome_daily'])) {
+    $show_welcome   = true;
+    $welcome_reason = 'daily';
+    unset($_SESSION['welcome_daily']); // daily : on peut unset directement, le localStorage prend le relais
+} elseif ($_wl_uid > 0 && isset($conn)) {
+    /* Fallback : compte Google ou session perdue — jamais connecté en BDD */
+    $_wl_stmt = $conn->prepare("SELECT date_creation, derniere_connexion FROM users WHERE user_id = ?");
+    $_wl_stmt->execute([$_wl_uid]);
+    $_wl_row = $_wl_stmt->fetch(PDO::FETCH_ASSOC);
+    if ($_wl_row) {
+        $last_raw = $_wl_row['derniere_connexion'] ?? null;
+        $never_connected = ($last_raw === null || $last_raw === '' || $last_raw === '0000-00-00 00:00:00');
+        $created_at = strtotime($_wl_row['date_creation'] ?? '') ?: 0;
+        if ($never_connected && $created_at && (time() - $created_at) < 172800) {
+            $show_welcome   = true;
+            $welcome_reason = 'new_account';
         }
     }
 }
 
-$_wl_show_js = $show_welcome ? 'true' : 'false';
-?>
+function wl_render_head_styles(): void {
+    global $show_welcome;
+    if (!$show_welcome) {
+        return;
+    }
+    ?>
+<style id="wl-critical">
+body.wl-pending { overflow: hidden !important; }
+body.wl-pending > *:not(#welcome-overlay),
+body.wl-pending #sidebar,
+body.wl-pending #toggleSidebar,
+body.wl-pending #volume-widget {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+#welcome-overlay {
+  display: flex !important;
+  opacity: 1 !important;
+  pointer-events: all !important;
+}
+</style>
+    <?php
+}
 
-<?php if ($show_welcome): ?>
-<style id="wl-mask">body,body *{pointer-events:none!important}#welcome-overlay{display:none}</style>
-<?php endif; ?>
+function wl_render_overlay(): void {
+    ?>
+<!-- Sons placeholder — remplacer quand les fichiers sont importés :
+     assets/sounds/welcome_circle.mp3  (2-4s, rotation cercle)
+     assets/sounds/welcome_loop.mp3    (≥4s, sauts lettres)
+     assets/sounds/welcome_end.mp3     (stinger fin boucle)
+     assets/sounds/welcome_burst.mp3   (cercles finaux)
+-->
 
-<!-- ═══════════════════════════════════════ WELCOME OVERLAY ══════════════════════════════════════
-     Sons placeholder — remplace les chemins quand tu as les fichiers :
-       /assets/sounds/welcome_circle.mp3   (son cercle, 2-4s)
-       /assets/sounds/welcome_loop.mp3     (son lettres, ≥4s)
-       /assets/sounds/welcome_end.mp3      (stinger de fin)
-       /assets/sounds/welcome_burst.mp3    (son cercles finaux)
-═══════════════════════════════════════════════════════════════════════════════════════════════ -->
-<div id="welcome-overlay">
+<
+<div id="welcome-overlay" aria-hidden="true">
   <div id="wl-bg"></div>
   <div id="wl-stage">
     <div id="wl-circle-wrap">
@@ -64,7 +77,7 @@ $_wl_show_js = $show_welcome ? 'true' : 'false';
     </div>
     <div id="wl-logo-wrap">
       <div id="wl-logo"><?php
-        foreach (str_split('FoodHub') as $i => $l) {
+        foreach (str_split('FoodHub') as $l) {
             echo "<span class='wl-letter'>$l</span>";
         }
       ?></div>
@@ -83,7 +96,7 @@ $_wl_show_js = $show_welcome ? 'true' : 'false';
   justify-content: center;
   overflow: hidden;
   pointer-events: all;
-  background: #0a0a0a;
+  background: transparent;
 }
 #wl-bg {
   position: absolute;
@@ -101,25 +114,58 @@ $_wl_show_js = $show_welcome ? 'true' : 'false';
 #wl-circle-wrap {
   margin-bottom: 18px;
   opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+#wl-circle-wrap.wl-visible {
+  opacity: 1;
+  transform: scale(1);
 }
 #wl-logo-wrap {
   opacity: 0;
   transform: translateY(30px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+#wl-logo-wrap.wl-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+#wl-logo-wrap.wl-exit {
+  opacity: 0;
+  transform: scale(0.85);
+  transition: opacity 0.7s ease, transform 0.7s ease;
 }
 #wl-logo {
-  font-family: 'Montserrat','Segoe UI',sans-serif;
+  font-family: 'HSR';
   font-size: clamp(2.6rem, 8vw, 5rem);
   font-weight: 900;
-  letter-spacing: .04em;
+  letter-spacing: 0.04em;
   color: #fff;
   display: flex;
   user-select: none;
-  text-shadow: 0 0 14px rgba(220,50,30,.8), 0 0 32px rgba(220,50,30,.4);
+  perspective: 600px;
+  text-shadow: 0 0 14px rgba(220, 50, 30, 0.8), 0 0 32px rgba(220, 50, 30, 0.4);
 }
 .wl-letter {
   display: inline-block;
   transform-origin: bottom center;
   will-change: transform, text-shadow;
-  text-shadow: 0 0 6px rgba(220,50,30,.35);
+  text-shadow: 0 0 6px rgba(220, 50, 30, 0.35);
+}
+#wl-burst-wrap {
+  position: absolute;
+  top: -70px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  pointer-events: none;
+}
+.wl-burst-circle {
+  opacity: 0;
+  transform: scale(0.5);
 }
 </style>
+    <?php
+}
