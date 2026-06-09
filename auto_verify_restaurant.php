@@ -11,6 +11,26 @@ if ($is_ajax) {
     header('Content-Type: application/json; charset=utf-8');
 }
 
+// ── Gestion du délai côté serveur (appelé par fsockopen depuis vendor_add_restaurant.php) ──
+// Si ?delay=600 est passé, on répond immédiatement au socket pour le libérer,
+// puis on attend en arrière-plan avant d'exécuter la vérification.
+$delay_sec = isset($_GET['delay']) ? max(0, (int)$_GET['delay']) : 0;
+if ($delay_sec > 0) {
+    // Fermer la connexion HTTP immédiatement (libère fsockopen côté appelant)
+    ignore_user_abort(true);
+    set_time_limit($delay_sec + 60);
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request(); // PHP-FPM : renvoie la réponse HTTP, continue en arrière-plan
+    } else {
+        // Fallback : vider le buffer et fermer la connexion
+        header('Connection: close');
+        header('Content-Length: 0');
+        ob_end_flush();
+        flush();
+    }
+    sleep($delay_sec);
+}
+
 require_once __DIR__ . '/db/config.php';
 require_once __DIR__ . '/detection_NSFW.php';
 

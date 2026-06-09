@@ -117,12 +117,30 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         $msg = "Restaurant et plats ajoutés ✅ (en attente de validation par l'admin)";
 
-        // ── Déclencher la vérification automatique après 10 min (fire-and-forget) ──
-        // On stocke en session le resto_id + timestamp pour que le JS déclenche l'AJAX
-        // au bon moment côté client, ou on peut faire un cron : php auto_verify_restaurant.php
+        // ── Déclencher la vérification automatique après 10 min (fire-and-forget côté serveur) ──
+        // On utilise une requête HTTP interne non-bloquante (fsockopen) : fonctionne même
+        // si le navigateur est fermé. Le JS ci-dessous sert uniquement de fallback.
+        try {
+            $host     = $_SERVER['HTTP_HOST'] ?? 'foodhub-sio.alwaysdata.net';
+            $scheme   = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'ssl' : 'tcp';
+            $port     = ($scheme === 'ssl') ? 443 : 80;
+            $path     = '/auto_verify_restaurant.php?ajax=1&delay=600&rid=' . (int)$resto_id;
+            // On ouvre le socket sans attendre la réponse (timeout 1 s)
+            $fp = @fsockopen($scheme . '://' . $host, $port, $errno, $errstr, 1);
+            if ($fp) {
+                $req  = "GET {$path} HTTP/1.1\r\n";
+                $req .= "Host: {$host}\r\n";
+                $req .= "Connection: close\r\n\r\n";
+                fwrite($fp, $req);
+                fclose($fp);
+            }
+        } catch (Exception $e) {
+            // silencieux — le JS prend le relais
+        }
+        // Fallback JS (si fsockopen échoue et que l'utilisateur reste sur la page)
         $_SESSION['pending_auto_verify'] = [
             'restaurant_id' => (int)$resto_id,
-            'after'         => time() + 600,  // dans 10 minutes
+            'after'         => time() + 600,
         ];
 
         } // fin else pré-vérification
@@ -515,22 +533,25 @@ window.vantaEffect = VANTA.WAVES({
 <script src="address-autocomplete.js"></script>
 
 <?php if (isset($_SESSION['pending_auto_verify'])): ?>
+<?php
+  $pav_after  = (int)$_SESSION['pending_auto_verify']['after'];
+  $pav_rid    = (int)$_SESSION['pending_auto_verify']['restaurant_id'];
+  unset($_SESSION['pending_auto_verify']); // libéré ici, AVANT d'écrire le JS
+?>
 <script>
-// Déclenche la vérification automatique du restaurant après 10 minutes
-// si l'admin n'a pas encore validé manuellement.
+// Fallback JS : déclenche la vérification si l'utilisateur reste sur la page
+// et si le déclenchement PHP côté serveur a échoué.
 (function() {
-  const afterTs  = <?= (int)$_SESSION['pending_auto_verify']['after'] ?>;
-  const restoId  = <?= (int)$_SESSION['pending_auto_verify']['restaurant_id'] ?>;
-  const nowTs    = Math.floor(Date.now() / 1000);
-  const delayMs  = Math.max(0, (afterTs - nowTs) * 1000);
-
-  <?php unset($_SESSION['pending_auto_verify']); ?>
+  const afterTs = <?= $pav_after ?>;
+  const restoId = <?= $pav_rid ?>;
+  const nowTs   = Math.floor(Date.now() / 1000);
+  const delayMs = Math.max(0, (afterTs - nowTs) * 1000);
 
   setTimeout(async () => {
     try {
       await fetch('/auto_verify_restaurant.php?ajax=1', { method: 'GET' });
     } catch (e) {
-      // silencieux — le cron prendra le relais si le navigateur est fermé
+      // silencieux
     }
   }, delayMs);
 })();
