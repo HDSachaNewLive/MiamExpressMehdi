@@ -67,6 +67,40 @@ if (isset($_SESSION['user_id'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $uid = (int)$_SESSION['user_id'];
 
+    // AJAX : réponse propriétaire
+    if (isset($_POST['ajax_reply'], $_POST['reply_comment_id'], $_POST['reply_text'])) {
+        header('Content-Type: application/json; charset=utf-8');
+        $rid_reply = (int)$_POST['reply_comment_id'];
+        $reply_text = trim($_POST['reply_text']);
+        if ($reply_text === '') {
+            echo json_encode(['success' => false, 'error' => 'La réponse est vide.']);
+            exit;
+        }
+        $stmt = $conn->prepare("
+            UPDATE avis
+            SET reponse = ?
+            WHERE avis_id = ?
+            AND restaurant_id IN (SELECT restaurant_id FROM restaurants WHERE proprietaire_id = ?)
+        ");
+        $stmt->execute([$reply_text, $rid_reply, $uid]);
+        if ($stmt->rowCount() === 0) {
+            echo json_encode(['success' => false, 'error' => 'Non autorisé.']);
+            exit;
+        }
+        // notif si auteur différent
+        $stmt2 = $conn->prepare("SELECT user_id, restaurant_id FROM avis WHERE avis_id = ?");
+        $stmt2->execute([$rid_reply]);
+        $comment = $stmt2->fetch(PDO::FETCH_ASSOC);
+        if ($comment && $comment['user_id'] != $uid) {
+            $conn->prepare("
+                INSERT INTO notifications (user_id, type, restaurant_id, avis_id, message)
+                VALUES (?, 'reply', ?, ?, ?)
+            ")->execute([$comment['user_id'], $comment['restaurant_id'], $rid_reply, "Le propriétaire a répondu à ton commentaire"]);
+        }
+        echo json_encode(['success' => true, 'reply' => nl2br(htmlspecialchars($reply_text))]);
+        exit;
+    }
+
     if (isset($_POST['delete_comment_id'])) {
         $cid = (int)$_POST['delete_comment_id'];
         $stmt = $conn->prepare("SELECT user_id, restaurant_id FROM avis WHERE avis_id=?");
@@ -90,35 +124,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    if (isset($_POST['reply_comment_id'], $_POST['reply_text']) && trim($_POST['reply_text']) !== '') {
-        $rid = (int)$_POST['reply_comment_id'];
-        $reply = trim($_POST['reply_text']);
-        $uid = (int)$_SESSION['user_id'];
-
-        $stmt = $conn->prepare("
-            UPDATE avis 
-            SET reponse = ? 
-            WHERE avis_id = ? 
-            AND restaurant_id IN (SELECT restaurant_id FROM restaurants WHERE proprietaire_id = ?)
-        ");
-        $stmt->execute([$reply, $rid, $uid]);
-
-        $stmt2 = $conn->prepare("SELECT user_id, restaurant_id FROM avis WHERE avis_id = ?");
-        $stmt2->execute([$rid]);
-        $comment = $stmt2->fetch(PDO::FETCH_ASSOC);
-
-        if ($comment && $comment['user_id'] != $uid) {
-            $message = "Le propriétaire a répondu à ton commentaire";
-            $stmt3 = $conn->prepare("
-                INSERT INTO notifications (user_id, type, restaurant_id, avis_id, message) 
-                VALUES (?, 'reply', ?, ?, ?)
-            ");
-            $stmt3->execute([$comment['user_id'], $comment['restaurant_id'], $rid, $message]);
-        }
-
-        header("Location: menu.php?restaurant_id=" . $comment['restaurant_id']);
-        exit;
-    }
 }
 
 // Mapping des icônes par type
@@ -168,9 +173,16 @@ $type_labels = [
   <main class="container">
 
     <?php if (isset($_SESSION['message'])): ?>
-      <div class="flash-message success">
+      <div class="flash-message success" id="php-flash-msg">
     <?= htmlspecialchars($_SESSION['message']) ?>
       </div>
+      <script>
+        document.addEventListener('DOMContentLoaded', function() {
+          const fm = document.getElementById('php-flash-msg');
+          if (!fm) return;
+          setTimeout(() => { fm.classList.add('hide'); setTimeout(() => fm.remove(), 400); }, 3000);
+        });
+      </script>
     <?php unset($_SESSION['message']); ?>
     <?php endif; ?>
     
@@ -251,11 +263,12 @@ $type_labels = [
     <!-- Section avis -->
     <h3 class="title-avis">Avis</h3>
     <?php if (empty($avis)): ?>
-      <p>Aucun avis pour le moment.</p>
+      <p id="no-avis-msg">Aucun avis pour le moment.</p>
     <?php endif; ?>
 
     <!-- affichage de chaque avis/commentaire -->
-    <?php foreach ($avis as $a): ?>
+    <div id="avis-list">
+  <?php foreach ($avis as $a): ?>
   <div class="resto-card comment-card" id="comment-<?= (int)$a['avis_id'] ?>" style="position:relative;">
     <div style="position:absolute; top:5px; right:10px; display:flex; gap:10px; z-index:10; pointer-events:auto;">
       <?php if ($uid === (int)$a['user_id']): ?>
@@ -306,7 +319,7 @@ $type_labels = [
     <!-- commentaires-->
     <p><?= htmlspecialchars($a['commentaire']) ?></p>
 
-    <form method="post" action="edit_comment.php" class="form edit-form" id="edit-form-<?= (int)$a['avis_id'] ?>" style="display:none; margin-top:10px;">
+    <form class="form edit-form ajax-edit-form" id="edit-form-<?= (int)$a['avis_id'] ?>" data-avis-id="<?= (int)$a['avis_id'] ?>" data-restaurant-id="<?= $restaurant_id ?>" style="display:none; margin-top:10px;">
     <input type="hidden" name="comment_id" value="<?= (int)$a['avis_id'] ?>">
     <input type="hidden" name="restaurant_id" value="<?= $restaurant_id ?>">
     <textarea name="new_comment" rows="3" class="form"></textarea>
@@ -316,13 +329,17 @@ $type_labels = [
     </form>
 
     <?php if (!empty($a['reponse'])): ?>
+      <div class="reply-container" id="reply-container-<?= (int)$a['avis_id'] ?>">
       <ul>
       <li><em>Réponse du propriétaire: <?= nl2br(htmlspecialchars($a['reponse'])) ?></em></li>
       </ul>
+      </div>
+    <?php else: ?>
+      <div class="reply-container" id="reply-container-<?= (int)$a['avis_id'] ?>"></div>
     <?php endif; ?>
 
     <?php if ($uid === (int)$restaurant['owner_id'] && $uid !== (int)$a['user_id']): ?>
-      <form method="post" class="form">
+      <form class="form ajax-reply-form" data-avis-id="<?= (int)$a['avis_id'] ?>">
         <input type="hidden" name="reply_comment_id" value="<?= (int)$a['avis_id'] ?>">
         <input type="text" name="reply_text" placeholder="Répondre/Modifier la réponse..." value="" class="form">
         <button type="submit" class="btn btn-small">💬 Répondre</button>
@@ -348,10 +365,11 @@ $type_labels = [
 </div>
 
 <?php endforeach; ?>
+    </div><!-- #avis-list -->
 
     <?php if (isset($_SESSION['user_id'])): ?>
       <h4>Laisser un avis</h4>
-      <form method="post" action="commenter.php" class="form" enctype="multipart/form-data">
+      <form id="form-avis" class="form" enctype="multipart/form-data">
         <input type="hidden" name="restaurant_id" value="<?= $restaurant_id ?>">
         <label>Note (1-5 étoiles)</label>
         <select name="note">
@@ -371,7 +389,7 @@ $type_labels = [
         <span id="file-name" class="file-name"></span>
         </div>
 
-        <button class="btn-publish" type="submit">Publier</button>
+        <button class="btn-publish" type="submit" id="btn-publish-avis">Publier</button>
       </form>
     <?php else: ?>
       <p><a href="login.php">Connecte-toi</a> pour laisser un avis.</p>
@@ -609,24 +627,138 @@ document.querySelectorAll(".add-to-cart-btn").forEach(btn => {
     return div.innerHTML;
   }
 
-  //empecher soumission vide pour commentaires et réponses proprio
-  const forms = document.querySelectorAll("form");
-  forms.forEach(form => {
-    form.addEventListener("submit", e => {
-      const replyField = form.querySelector('input[name="reply_text"]');
-      const commentField = form.querySelector('textarea[name="commentaire"]');
+  //empecher soumission vide pour commentaires et réponses proprio — remplacé par AJAX ci-dessous
+});
 
-      if (replyField && replyField.value.trim() === "") {
-        e.preventDefault();
-        showMessage("⚠️ Tu dois écrire une réponse avant d'envoyer.", "error");
-      }
+// ── AJAX : envoi d'avis ────────────────────────────────────────────────────
+document.getElementById('form-avis')?.addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const commentaire = this.querySelector('textarea[name="commentaire"]').value.trim();
+  if (!commentaire) { showMessage('⚠️ Ton avis est vide.', 'error'); return; }
 
-      if (commentField && commentField.value.trim() === "") {
-        e.preventDefault();
-        showMessage("⚠️ Ton avis est vide.", "error");
+  const btn = document.getElementById('btn-publish-avis');
+  btn.disabled = true;
+  btn.textContent = 'Publication…';
+
+  try {
+    const fd = new FormData(this);
+    fd.append('ajax_avis', '1');
+    const resp = await fetch('commenter.php', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (data.success) {
+      // Injecter le nouveau commentaire en tête de liste
+      const noAvis = document.getElementById('no-avis-msg');
+      if (noAvis) noAvis.remove();
+
+      const list = document.getElementById('avis-list');
+      const tmp = document.createElement('div');
+      tmp.innerHTML = data.html;
+      const newCard = tmp.firstElementChild;
+      newCard.style.opacity = '0';
+      newCard.style.transform = 'translateY(-12px)';
+      list.prepend(newCard);
+      requestAnimationFrame(() => {
+        newCard.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+        newCard.style.opacity = '1';
+        newCard.style.transform = 'translateY(0)';
+      });
+
+      // Réinitialiser le formulaire
+      this.reset();
+      document.getElementById('image-preview-container').style.display = 'none';
+      document.getElementById('file-name').textContent = '';
+
+      showMessage('✅ Avis publié !', 'success');
+    } else {
+      showMessage('⚠️ ' + (data.error ?? 'Erreur inconnue'), 'error');
+    }
+  } catch (err) {
+    showMessage('❌ Erreur de connexion', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Publier';
+  }
+});
+
+// ── AJAX : modification d'avis ─────────────────────────────────────────────
+document.addEventListener('submit', async function(e) {
+  if (!e.target.classList.contains('ajax-edit-form')) return;
+  e.preventDefault();
+  const form = e.target;
+  const avisId = form.dataset.avisId;
+  const newText = form.querySelector('textarea[name="new_comment"]').value.trim();
+  if (!newText) { showMessage('⚠️ Le commentaire est vide.', 'error'); return; }
+
+  const saveBtn = form.querySelector('button[type="submit"]');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Enregistrement…';
+
+  try {
+    const fd = new FormData(form);
+    fd.append('ajax_edit_comment', '1');
+    const resp = await fetch('edit_comment.php', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (data.success) {
+      // Mettre à jour le texte dans le DOM
+      const card = document.getElementById('comment-' + avisId);
+      if (card) {
+        const commentP = card.querySelector('p:not(.reco-stat)');
+        if (commentP) commentP.textContent = newText;
+        // Mettre à jour le data-comment du bouton Modifier
+        const editBtn = card.querySelector('.edit-btn');
+        if (editBtn) editBtn.dataset.comment = newText;
       }
-    });
-  });
+      hideEditForm(avisId);
+      showMessage('✅ Commentaire modifié.', 'success');
+    } else {
+      showMessage('⚠️ ' + (data.error ?? 'Erreur'), 'error');
+    }
+  } catch (err) {
+    showMessage('❌ Erreur de connexion', 'error');
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = '💾 Enregistrer';
+  }
+});
+
+// ── AJAX : réponse propriétaire ────────────────────────────────────────────
+document.addEventListener('submit', async function(e) {
+  if (!e.target.classList.contains('ajax-reply-form')) return;
+  e.preventDefault();
+  const form = e.target;
+  const avisId = form.dataset.avisId;
+  const replyInput = form.querySelector('input[name="reply_text"]');
+  const replyText = replyInput.value.trim();
+  if (!replyText) { showMessage('⚠️ Tu dois écrire une réponse avant d\'envoyer.', 'error'); return; }
+
+  const btn = form.querySelector('button[type="submit"]');
+  btn.disabled = true;
+  btn.textContent = 'Envoi…';
+
+  try {
+    const fd = new FormData();
+    fd.append('ajax_reply', '1');
+    fd.append('reply_comment_id', avisId);
+    fd.append('reply_text', replyText);
+    const resp = await fetch('menu.php?restaurant_id=<?= $restaurant_id ?>', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (data.success) {
+      // Mettre à jour ou créer la zone de réponse
+      const replyContainer = document.getElementById('reply-container-' + avisId);
+      if (replyContainer) {
+        replyContainer.innerHTML = `<ul><li><em>Réponse du propriétaire: ${data.reply}</em></li></ul>`;
+      }
+      replyInput.value = '';
+      showMessage('✅ Réponse publiée.', 'success');
+    } else {
+      showMessage('⚠️ ' + (data.error ?? 'Erreur'), 'error');
+    }
+  } catch (err) {
+    showMessage('❌ Erreur de connexion', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '💬 Répondre';
+  }
 });
 
 function showMessage(text, type = "success", buttonUrl = null, buttonText = null) {

@@ -383,12 +383,22 @@ if (!$matched) {
         zoom: 1.1
     });
 </script>
+
 <!-- musique d'ambiance -->
 <?php if(random_int(1,10) > 5): ?>
-    <audio id="player" loop> <source src="https://raw.githubusercontent.com/HDSachaNewLive/foodhub-assets/main/Cité souterraine Gerudo - The Legend of Zelda Tears of the Kingdom (OST).mp3" type="audio/mp3"> </audio>
+    <?php if(random_int(1,10) > 5): ?>
+        <audio id="player" autoplay loop> <source src="https://raw.githubusercontent.com/HDSachaNewLive/foodhub-assets/main/Cité souterraine Gerudo - The Legend of Zelda Tears of the Kingdom (OST).mp3" type="audio/mp3"> </audio>
+    <?php else: ?>
+        <audio id="player" autoplay loop> <source src="https://raw.githubusercontent.com/HDSachaNewLive/foodhub-assets/main/Kara Kara Bazaar (The Legend of Zelda Breath of the Wild OST).mp3" type="audio/mp3"> </audio>
+    <?php endif; ?>
 <?php else: ?>
-    <audio id="player" loop> <source src="https://raw.githubusercontent.com/HDSachaNewLive/foodhub-assets/main/Kara Kara Bazaar (The Legend of Zelda Breath of the Wild OST).mp3" type="audio/mp3"> </audio>
+    <?php if(random_int(1,10) > 5): ?>
+        <audio id="player" autoplay loop> <source src="https://raw.githubusercontent.com/HDSachaNewLive/foodhub-assets/main/Outside a Shrire (Wasteland) - Tears of the Kingdom OST.mp3" type="audio/mp3"> </audio>
+    <?php else: ?>
+        <audio id="player" autoplay loop> <source src="https://raw.githubusercontent.com/HDSachaNewLive/foodhub-assets/main/Maison de Link TOTK.mp3" type="audio/mp3"> </audio>
+    <?php endif; ?>
 <?php endif; ?>
+
 <script>
     // Les navigateurs bloquent l'autoplay sans interaction utilisateur.
     // On tente d'abord, puis on écoute le premier clic/toucher si ça échoue.
@@ -398,7 +408,7 @@ if (!$matched) {
             player.play();
             document.removeEventListener('click', unlock);
             document.removeEventListener('keydown', unlock);
-            document.removeEventListener('touchstart', unlock);
+      document.removeEventListener('touchstart', unlock);
         };
         document.addEventListener('click', unlock);
         document.addEventListener('keydown', unlock);

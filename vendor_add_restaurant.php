@@ -2,6 +2,7 @@
 //vendor_add_restaurant.php
 session_start();
 require_once "db/config.php";
+require_once "detection_NSFW.php";
 if (!isset($_SESSION["user_id"]) || ($_SESSION["type_compte"] ?? "") !== "proprietaire") { 
     header("Location: login.php"); exit; 
 }
@@ -23,6 +24,23 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if ($nom === "") {
         $msg = "Nom du restaurant requis.";
     } else {
+        // ── Pré-vérification contenu (sans insertion en BDD) ─────────────────
+        $plats_pour_check = [];
+        foreach ($plats as $p) {
+            $p_nom_check  = trim($p["nom"] ?? "");
+            $p_desc_check = trim($p["description"] ?? "");
+            if ($p_nom_check !== "") {
+                $plats_pour_check[] = ['nom_plat' => $p_nom_check, 'description_plat' => $p_desc_check];
+            }
+        }
+        $precheck = fh_verify_restaurant($nom, $desc, $adresse, $categorie, $plats_pour_check);
+
+        // Score ≥ 20 = refus immédiat, on n'insère rien
+        if ($precheck['score'] >= 20) {
+            $msg = "⛔ Votre restaurant n'a pas pu être soumis : le contenu ne respecte pas les règles de FoodHub. Veuillez vérifier le nom, la description et les noms de plats.";
+        } else {
+        // ─────────────────────────────────────────────────────────────────────
+
         // Insert restaurant
         $ins = $conn->prepare("INSERT INTO restaurants (proprietaire_id, nom_restaurant, adresse, latitude, longitude, categorie, description_resto) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $ins->execute([$owner_id, $nom, $adresse, $latitude, $longitude, $categorie, $desc]);
@@ -88,7 +106,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         // Créer notification pour super-admin pour user user_id = 1
         try {
-            $message = "Nouveau restaurant à vérifier : " . $nom;
+            // Si score modéré (10-19), signaler à l'admin pour vérification prioritaire
+            $flag_admin = ($precheck['score'] >= 10) ? " ⚠️ [À vérifier — contenu signalé]" : "";
+            $message = "Nouveau restaurant à vérifier : " . $nom . $flag_admin;
             $notifStmt = $conn->prepare("INSERT INTO notifications (user_id, type, restaurant_id, avis_id, message) VALUES (?, 'comment', ?, NULL, ?)");
             $notifStmt->execute([1, $resto_id, $message]);
         } catch (Exception $e) {
@@ -96,6 +116,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
 
         $msg = "Restaurant et plats ajoutés ✅ (en attente de validation par l'admin)";
+
+        // ── Déclencher la vérification automatique après 10 min (fire-and-forget) ──
+        // On stocke en session le resto_id + timestamp pour que le JS déclenche l'AJAX
+        // au bon moment côté client, ou on peut faire un cron : php auto_verify_restaurant.php
+        $_SESSION['pending_auto_verify'] = [
+            'restaurant_id' => (int)$resto_id,
+            'after'         => time() + 600,  // dans 10 minutes
+        ];
+
+        } // fin else pré-vérification
     }
 }
 ?>
@@ -483,5 +513,28 @@ window.vantaEffect = VANTA.WAVES({
 })();
 </script>
 <script src="address-autocomplete.js"></script>
+
+<?php if (isset($_SESSION['pending_auto_verify'])): ?>
+<script>
+// Déclenche la vérification automatique du restaurant après 10 minutes
+// si l'admin n'a pas encore validé manuellement.
+(function() {
+  const afterTs  = <?= (int)$_SESSION['pending_auto_verify']['after'] ?>;
+  const restoId  = <?= (int)$_SESSION['pending_auto_verify']['restaurant_id'] ?>;
+  const nowTs    = Math.floor(Date.now() / 1000);
+  const delayMs  = Math.max(0, (afterTs - nowTs) * 1000);
+
+  <?php unset($_SESSION['pending_auto_verify']); ?>
+
+  setTimeout(async () => {
+    try {
+      await fetch('/auto_verify_restaurant.php?ajax=1', { method: 'GET' });
+    } catch (e) {
+      // silencieux — le cron prendra le relais si le navigateur est fermé
+    }
+  }, delayMs);
+})();
+</script>
+<?php endif; ?>
 </body>
 </html>

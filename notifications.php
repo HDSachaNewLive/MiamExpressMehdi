@@ -328,6 +328,9 @@ $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <!-- Vérification des restaurants -->
     <main class="container">
       <h2>🛠 Vérification des restaurants</h2>
+      <p style="font-size:0.7rem;color:#888;text-align:left;margin-top:-0.4rem;margin-bottom:1rem;">
+        Les restaurants non validés dans les 10 minutes sont vérifiés automatiquement par le système. Vous pouvez toujours valider ou refuser manuellement.
+      </p>
       <?php
       $pendingStmt = $conn->prepare("SELECT * FROM restaurants WHERE verified = 0 ORDER BY restaurant_id DESC");
       $pendingStmt->execute();
