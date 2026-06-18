@@ -3,6 +3,7 @@
 session_start();
 require_once 'db/config.php';
 require_once 'config_recaptcha.php';
+require_once __DIR__ . '/csrf_helper.php';
 
 // Vérifier si la bdd contient des utilisateurs
 $stmt = $conn->query("SELECT COUNT(*) as nb_users FROM users");
@@ -27,6 +28,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_forgot'])) {
     header('Content-Type: application/json; charset=utf-8');
     require_once 'mail_helper.php';
 
+  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+    echo json_encode(['success' => false, 'error' => 'Jeton CSRF invalide.']);
+    exit;
+  }
+
     $email_forgot = trim($_POST['email_forgot'] ?? '');
 
     if (!filter_var($email_forgot, FILTER_VALIDATE_EMAIL)) {
@@ -45,9 +51,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_forgot'])) {
     }
 
     if ($u['email_fictif']) {
-        // Compte fictif → formulaire inline
-        echo json_encode(['success' => true, 'fictif' => true, 'user_id' => (int)$u['user_id']]);
-        exit;
+      // Compte fictif → autoriser un reset inline MAIS ne PAS renvoyer l'user_id au client
+      // On place l'user_id dans la session pour éviter toute fuite d'identifiants
+      $_SESSION['forgot_fictif_user'] = (int)$u['user_id'];
+      // token optionnel / délai
+      try {
+        $_SESSION['forgot_fictif_token'] = bin2hex(random_bytes(16));
+      } catch (Exception $e) {
+        $_SESSION['forgot_fictif_token'] = bin2hex(openssl_random_pseudo_bytes(16));
+      }
+      $_SESSION['forgot_fictif_expires'] = time() + 600; // valable 10 minutes
+
+      // Réponse volontairement dépouillée (pas d'user_id)
+      echo json_encode(['success' => true, 'fictif' => true]);
+      exit;
     }
 
     if (!$u['email_verifie']) {
@@ -64,44 +81,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_forgot'])) {
 
 // AJAX : Reset mdp compte fictif (inline)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_reset_fictif'])) {
-    header('Content-Type: application/json; charset=utf-8');
+  header('Content-Type: application/json; charset=utf-8');
 
-    $user_id_reset  = (int)($_POST['user_id_reset']  ?? 0);
-    $new_pass       = $_POST['new_pass']       ?? '';
-    $confirm_pass   = $_POST['confirm_pass']   ?? '';
-
-    if ($user_id_reset <= 0) {
-        echo json_encode(['success' => false, 'error' => 'Requête invalide.']);
-        exit;
-    }
-
-    // Vérifier que le compte existe bien et est fictif
-    $stmt = $conn->prepare("SELECT user_id FROM users WHERE user_id = ? AND email_fictif = 1 AND compte_actif = 1 LIMIT 1");
-    $stmt->execute([$user_id_reset]);
-    if (!$stmt->fetch()) {
-        echo json_encode(['success' => false, 'error' => 'Impossible de réinitialiser ce compte ici.']);
-        exit;
-    }
-
-    if (strlen($new_pass) < 6) {
-        echo json_encode(['success' => false, 'error' => 'Mot de passe trop court (min. 6 caractères).']);
-        exit;
-    }
-    if ($new_pass !== $confirm_pass) {
-        echo json_encode(['success' => false, 'error' => 'Les mots de passe ne correspondent pas.']);
-        exit;
-    }
-
-    $hash = password_hash($new_pass, PASSWORD_DEFAULT);
-    $conn->prepare("UPDATE users SET motdepasse = ? WHERE user_id = ?")->execute([$hash, $user_id_reset]);
-    echo json_encode(['success' => true]);
+  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+    echo json_encode(['success' => false, 'error' => 'Jeton CSRF invalide.']);
     exit;
+  }
+
+  $new_pass       = $_POST['new_pass']       ?? '';
+  $confirm_pass   = $_POST['confirm_pass']   ?? '';
+
+  // On récupère l'user_id depuis la session (évite d'envoyer l'ID au client)
+  $user_id_reset = isset($_SESSION['forgot_fictif_user']) ? (int)$_SESSION['forgot_fictif_user'] : 0;
+  $expires = isset($_SESSION['forgot_fictif_expires']) ? (int)$_SESSION['forgot_fictif_expires'] : 0;
+
+  if ($user_id_reset <= 0 || $expires < time()) {
+    // Pas de session active pour ce reset
+    echo json_encode(['success' => false, 'error' => 'La session de réinitialisation a expiré ou est invalide. Réeessaie depuis l\'email.']);
+    exit;
+  }
+
+  // Vérifier que le compte existe bien et est fictif
+  $stmt = $conn->prepare("SELECT user_id FROM users WHERE user_id = ? AND email_fictif = 1 AND compte_actif = 1 LIMIT 1");
+  $stmt->execute([$user_id_reset]);
+  if (!$stmt->fetch()) {
+    echo json_encode(['success' => false, 'error' => 'Impossible de réinitialiser ce compte ici.']);
+    exit;
+  }
+
+  if (strlen($new_pass) < 6) {
+    echo json_encode(['success' => false, 'error' => 'Mot de passe trop court (min. 6 caractères).']);
+    exit;
+  }
+  if ($new_pass !== $confirm_pass) {
+    echo json_encode(['success' => false, 'error' => 'Les mots de passe ne correspondent pas.']);
+    exit;
+  }
+
+  $hash = password_hash($new_pass, PASSWORD_DEFAULT);
+  $conn->prepare("UPDATE users SET motdepasse = ? WHERE user_id = ?")->execute([$hash, $user_id_reset]);
+
+  // Nettoyer la session liée au reset fictif
+  unset($_SESSION['forgot_fictif_user'], $_SESSION['forgot_fictif_token'], $_SESSION['forgot_fictif_expires']);
+
+  echo json_encode(['success' => true]);
+  exit;
 }
 
 // Connexion classique
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_forgot']) && !isset($_POST['ajax_reset_fictif'])) {
-    $email      = trim($_POST['email']      ?? '');
-    $motdepasse = $_POST['motdepasse']      ?? '';
+  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+    $error = 'Jeton CSRF invalide.';
+  }
+
+  $email      = trim($_POST['email']      ?? '');
+  $motdepasse = $_POST['motdepasse']      ?? '';
 
     $limite_tentatives = 5;
 
@@ -140,6 +174,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['ajax_forgot']) && !i
                 $_SESSION['nom_user']          = $user['nom_user'];
                 $_SESSION['type_compte']       = $user['type_compte'];
                 $_SESSION['adresse_livraison'] = $user['adresse_livraison'];
+                // Renouveler l'ID de session après authentification pour éviter fixation
+                if (function_exists('session_regenerate_id')) {
+                  session_regenerate_id(true);
+                }
 
                 $last_conn_raw = $user['derniere_connexion'] ?? null;
                 $is_first_login = ($last_conn_raw === null || $last_conn_raw === '' || $last_conn_raw === '0000-00-00 00:00:00');
@@ -230,6 +268,7 @@ unset($_SESSION['success']);
     <div class="separator"><span>ou</span></div>
 
     <form method="post" action="login.php" class="form" id="login-form">
+      <?= fh_csrf_field() ?>
       <input type="email" name="email" placeholder="Email" required value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"><br>
       <input type="password" name="motdepasse" placeholder="Mot de passe" required><br>
       <div class="g-recaptcha" data-sitekey="<?= RECAPTCHA_SITE_KEY ?>" style="display:flex;justify-content:left;margin:20px 0;"></div>
@@ -268,11 +307,10 @@ unset($_SESSION['success']);
       <!-- Étape 2b : compte fictif → formulaire inline -->
       <div id="forgot-step2-fictif" style="display:none;">
         <div id="fictif-reset-msg" class="forgot-msg" style="display:none;"></div>
-        <div class="fictif-reset-box">
+          <div class="fictif-reset-box">
           <div style="font-size:2rem;margin-bottom:0.5rem;">🔑</div>
           <h3>Modifier ton mot de passe</h3>
           <p class="forgot-info">Ton compte utilise une adresse fictive. Tu peux modifier ton mot de passe directement ici.</p>
-          <input type="hidden" id="fictif-user-id" value="">
           <div class="form">
             <input type="password" id="fictif-new-pass"     placeholder="Nouveau mot de passe (min. 6 caractères)">
             <input type="password" id="fictif-confirm-pass" placeholder="Confirmer le mot de passe">
@@ -319,7 +357,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const emailInput       = document.getElementById('forgot-email');
   const btnSend          = document.getElementById('btn-forgot-send');
   const step1Msg         = document.getElementById('forgot-step1-msg');
-  const fictifUserId     = document.getElementById('fictif-user-id');
   const fictifNewPass    = document.getElementById('fictif-new-pass');
   const fictifConfirm    = document.getElementById('fictif-confirm-pass');
   const btnFictifReset   = document.getElementById('btn-fictif-reset');
@@ -362,6 +399,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const fd = new FormData();
         fd.append('ajax_forgot', '1');
         fd.append('email_forgot', email);
+        const csrfEl = document.querySelector('input[name="csrf_token"]');
+        if (csrfEl) fd.append('csrf_token', csrfEl.value);
 
         const resp = await fetch('login.php', { method: 'POST', body: fd });
         const data = await resp.json();
@@ -374,8 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (data.fictif) {
-          // Compte fictif → formulaire inline
-          fictifUserId.value = data.user_id;
+          // Compte fictif → formulaire inline (le serveur garde l'user_id en session, on ne l'expose pas au client)
           step1.style.display      = 'none';
           step2Fictif.style.display = 'block';
         } else {
@@ -397,9 +435,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Étape 2b : reset mot de passe fictif
-  if (btnFictifReset) {
+      if (btnFictifReset) {
     btnFictifReset.addEventListener('click', async () => {
-      const uid     = fictifUserId.value;
       const pass    = fictifNewPass.value;
       const confirm = fictifConfirm.value;
 
@@ -414,9 +451,10 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const fd = new FormData();
         fd.append('ajax_reset_fictif', '1');
-        fd.append('user_id_reset',  uid);
         fd.append('new_pass',       pass);
         fd.append('confirm_pass',   confirm);
+        const csrfEl2 = document.querySelector('input[name="csrf_token"]');
+        if (csrfEl2) fd.append('csrf_token', csrfEl2.value);
 
         const resp = await fetch('login.php', { method: 'POST', body: fd });
         const data = await resp.json();

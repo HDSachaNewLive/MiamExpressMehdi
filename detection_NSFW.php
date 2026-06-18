@@ -244,7 +244,6 @@ function fh_banned_words(): array
         'retard'        => 10,
         'spastic'       => 8,
         'stupid'        => 4,
-        'idiot'         => 5,
         'loser'         => 4,
         'douche'        => 5,
         'douchebag'     => 8,
@@ -440,7 +439,9 @@ function fh_is_false_positive(string $word, string $normalized_text): bool
         'con'   => ['bacon', 'balcon', 'falcon', 'confit', 'conserver', 'conge', 'concert',
                     'confiture', 'confiserie', 'consome', 'consomme', 'continent', 'contenu',
                     'conference', 'connexion', 'concept', 'contact', 'controle', 'convivial',
-                    'reconditionne', 'second', 'micro', 'flacon', 'maçon', 'garcon', 'tranchon'],
+                    'reconditionne', 'second', 'micro', 'flacon', 'maçon', 'garcon', 'tranchon', 
+                    'deconnecter', 'congelation', 'congele', 'confiture',
+                    'condiment', 'deconseiller', 'condiments', 'conduite', 'conserver', 'conservation'],
         'nul'   => ['annuler', 'annulation', 'nulle part', 'calcul', 'stimul'],
         'mort'  => ['immortel', 'amortir', 'amortissement', 'morteau', 'remords'],
         'pipe'  => ['pipeline', 'pipe a eau', 'pipe froide'],
@@ -450,8 +451,6 @@ function fh_is_false_positive(string $word, string $normalized_text): bool
         'crever'=> ['crevette', 'decreveter'],
         'baise' => ['embaise', 'baisemain'],
         'merde' => [], // pas de faux positif connu
-        'con'   => ['deconseiller', 'deconnecter', 'congelation', 'congele', 'confiture',
-                    'condiment', 'condiments', 'conduite', 'conserver', 'conservation'],
     ];
 
     if (!isset($fp_contexts[$word])) {

@@ -2,6 +2,8 @@
 // commenter.php
 session_start();
 require_once 'db/config.php';
+require_once 'upload_helper.php';
+require_once 'csrf_helper.php';
 if (!isset($_SESSION['user_id'])) {
     if (isset($_POST['ajax_avis'])) {
         header('Content-Type: application/json; charset=utf-8');
@@ -15,6 +17,18 @@ $is_ajax = isset($_POST['ajax_avis']);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $restaurant_id = (int)($_POST['restaurant_id'] ?? 0);
+    // Vérification CSRF
+    if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+        if ($is_ajax) {
+            header('Content-Type: application/json; charset=utf-8');
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'Jeton CSRF invalide.']);
+            exit;
+        }
+        $_SESSION['message'] = 'Jeton CSRF invalide.';
+        header("Location: menu.php?restaurant_id=" . $restaurant_id);
+        exit;
+    }
     $note          = max(1, min(5, (int)($_POST['note'] ?? 5)));
     $commentaire   = trim($_POST['commentaire'] ?? '');
 
@@ -28,31 +42,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Vérifier qu'un avis n'existe pas déjà
     $chk = $conn->prepare("SELECT COUNT(*) FROM avis WHERE user_id = ? AND restaurant_id = ?");
     $chk->execute([$uid, $restaurant_id]);
-    if ($chk->fetchColumn() > 0) {
-        if ($is_ajax) { echo json_encode(['success' => false, 'error' => 'Tu as déjà laissé un avis pour ce restaurant.']); exit; }
-        $_SESSION['message'] = "⚠️ Tu as déjà laissé un avis pour ce restaurant.";
-        header("Location: menu.php?restaurant_id=" . $restaurant_id); exit;
-    }
-
-    // Gestion de l'upload d'image
+    
+    // Gestion de l'upload d'image (sécurisée)
     $image_path = null;
     if (isset($_FILES['image_avis']) && $_FILES['image_avis']['error'] === UPLOAD_ERR_OK) {
         $upload_dir = 'uploads/avis/';
         if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
-
-        $file_tmp  = $_FILES['image_avis']['tmp_name'];
-        $file_name = $_FILES['image_avis']['name'];
-        $file_size = $_FILES['image_avis']['size'];
-        $file_ext  = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-
-        $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-        if (in_array($file_ext, $allowed_extensions) && $file_size <= 5242880) {
-            $new_filename = uniqid('avis_', true) . '.' . $file_ext;
-            $destination  = $upload_dir . $new_filename;
-            if (move_uploaded_file($file_tmp, $destination)) {
-                $image_path = $destination;
-            }
+        $res = fh_handle_image_upload($_FILES['image_avis'], $upload_dir, 5242880);
+        if ($res['success']) {
+            $image_path = $upload_dir . $res['filename'];
         }
+        // Si erreur d'upload, on ignore l'image (le commentaire est toujours possible)
     }
 
     $ins = $conn->prepare("INSERT INTO avis (user_id, restaurant_id, note, commentaire, image_path) VALUES (?, ?, ?, ?, ?)");
@@ -90,6 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             data-comment="<?= htmlspecialchars($commentaire, ENT_QUOTES) ?>">Modifier ✏️</button>
         <form method="post" class="form" onsubmit="return confirm('Supprimer ce commentaire ?');">
             <input type="hidden" name="delete_comment_id" value="<?= $new_avis_id ?>">
+            <?= fh_csrf_field() ?>
             <button type="submit" class="btn btn-small">❌</button>
         </form>
     </div>

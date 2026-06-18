@@ -2,6 +2,9 @@
 // profile.php
 session_start();
 require_once 'db/config.php';
+require_once 'upload_helper.php';
+require_once 'csrf_helper.php';
+require_once __DIR__ . '/auth_helper.php';
 if (!isset($_SESSION['user_id'])) { 
   header('Location: login.php'); 
   exit; 
@@ -26,9 +29,9 @@ if (!$user['compte_actif']) {
 }
 
 // Rediriger les propriétaires vers leur page de profil dédiée
-if ($user['type_compte'] === 'proprietaire' && $uid !== 1) {
-    header('Location: profile_proprio.php');
-    exit;
+if ($user['type_compte'] === 'proprietaire' && !fh_is_admin($conn)) {
+  header('Location: profile_proprio.php');
+  exit;
 }
 
 $couleur_vanta_public = $user['couleur_vanta'] ?? '#7cc6e6';
@@ -36,7 +39,11 @@ $couleur_vanta_public = $user['couleur_vanta'] ?? '#7cc6e6';
 //  AJAX : Renvoyer l'email de vérification
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_resend_verify'])) {
     header('Content-Type: application/json; charset=utf-8');
-    require_once 'mail_helper.php';
+  require_once 'mail_helper.php';
+  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+    echo json_encode(['success' => false, 'error' => 'Jeton CSRF invalide']);
+    exit;
+  }
     $sent = fh_send_verify_email($conn, $uid, $user['nom_user'], $user['email']);
     echo json_encode(['success' => $sent]);
     exit;
@@ -46,6 +53,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_resend_verify'])
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_change_email'])) {
     header('Content-Type: application/json; charset=utf-8');
     require_once 'mail_helper.php';
+  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+    echo json_encode(['success' => false, 'error' => 'Jeton CSRF invalide']);
+    exit;
+  }
 
     $new_email    = trim($_POST['new_email']    ?? '');
     $is_fictif    = (int)($_POST['is_fictif']   ?? 0);
@@ -83,15 +94,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_change_email']))
 
 // ── Traitement du formulaire principal ───────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  // Vérification CSRF pour toutes les actions POST (les AJAX ont été traités plus haut)
+  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+    $_SESSION['msg'] = 'Jeton CSRF invalide.';
+    header('Location: profile.php');
+    exit;
+  }
     // Suppression de la photo
     if (isset($_POST['delete_photo'])) {
-        if ($user['photo_profil'] && file_exists($user['photo_profil'])) {
-            unlink($user['photo_profil']);
-        }
-        $conn->prepare("UPDATE users SET photo_profil = NULL WHERE user_id = ?")->execute([$uid]);
-        $_SESSION['msg'] = "Photo de profil supprimée.";
+      if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+        $_SESSION['msg'] = 'Jeton CSRF invalide.';
         header('Location: profile.php');
         exit;
+      }
+      if ($user['photo_profil'] && file_exists($user['photo_profil'])) {
+        unlink($user['photo_profil']);
+      }
+      $conn->prepare("UPDATE users SET photo_profil = NULL WHERE user_id = ?")->execute([$uid]);
+      $_SESSION['msg'] = "Photo de profil supprimée.";
+      header('Location: profile.php');
+      exit;
     } else {
         $nom               = trim($_POST['nom_user']            ?? '');
         $tel               = trim($_POST['telephone']           ?? '');
@@ -108,26 +130,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             elseif (strlen($new_pass) < 6)   $errors[] = "Mot de passe trop court (6+).";
         }
 
-        // Upload photo
+        // Upload photo (sécurisé)
         $photo_path = $user['photo_profil'];
         if (isset($_FILES['photo_profil']) && $_FILES['photo_profil']['error'] === UPLOAD_ERR_OK) {
-            $upload_dir = 'uploads/profils/';
-            if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
-            $file_tmp  = $_FILES['photo_profil']['tmp_name'];
-            $file_name = $_FILES['photo_profil']['name'];
-            $file_size = $_FILES['photo_profil']['size'];
-            $file_ext  = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-            $allowed   = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-            if (in_array($file_ext, $allowed) && $file_size <= 5242880) {
-                $new_filename = 'profil_' . $uid . '_' . uniqid() . '.' . $file_ext;
-                $destination  = $upload_dir . $new_filename;
-                if (move_uploaded_file($file_tmp, $destination)) {
-                    if ($photo_path && file_exists($photo_path)) unlink($photo_path);
-                    $photo_path = $destination;
-                }
-            } else {
-                $errors[] = "Format d'image non valide ou fichier trop volumineux (max 5MB).";
-            }
+          $upload_dir = 'uploads/profils/';
+          if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+          $res = fh_handle_image_upload($_FILES['photo_profil'], $upload_dir, 5242880);
+          if ($res['success']) {
+            $new_path = $upload_dir . $res['filename'];
+            if ($photo_path && file_exists($photo_path)) unlink($photo_path);
+            $photo_path = $new_path;
+          } else {
+            $errors[] = $res['error'] ?? "Erreur lors de l'upload.";
+          }
         }
 
         if (empty($errors)) {
@@ -257,6 +272,7 @@ if ($row_pending && !$user['email_fictif']) $pending_email = $row_pending['new_e
   <!-- ══════════════════════════════════════ -->
 
   <form method="post" action="profile.php" class="form" enctype="multipart/form-data">
+    <?= fh_csrf_field() ?>
     <input type="text"  maxlength="45" name="nom_user"  required value="<?= htmlspecialchars($_POST['nom_user'] ?? $user['nom_user']) ?>"><br>
     <input type="text"  name="telephone" placeholder="Téléphone" value="<?= htmlspecialchars($_POST['telephone'] ?? $user['telephone'] ?? '') ?>">
     <input type="text"  name="adresse_livraison" placeholder="Adresse de livraison" value="<?= htmlspecialchars($_POST['adresse_livraison'] ?? $user['adresse_livraison'] ?? '') ?>" data-address-autocomplete>
@@ -274,6 +290,7 @@ if ($row_pending && !$user['email_fictif']) $pending_email = $row_pending['new_e
         <img id="preview-img" src="" alt="Aperçu" style="max-width:120px;height:120px;object-fit:cover;border-radius:50%;border:3px solid #ff6b6b;">
       </div>
       <?php if ($user['photo_profil'] && file_exists($user['photo_profil'])): ?>
+        <?= fh_csrf_field() ?>
         <button type="submit" name="delete_photo" value="1" class="btn-delete-photo" style="margin-top:10px;">🗑️ Supprimer la photo actuelle</button>
       <?php endif; ?>
     </div>
@@ -325,6 +342,7 @@ if ($row_pending && !$user['email_fictif']) $pending_email = $row_pending['new_e
   <h4>Supprimer le compte</h4>
   <?php if ($user['user_id'] != 1): ?>
   <form method="post" action="delete_account.php" onsubmit="return confirm('Tu es sûr ? Cette action est IRRÉVERSIBLE.')">
+    <?= fh_csrf_field() ?>
     <button class="btn-del" type="submit">Supprimer mon compte</button>
   </form>
   <?php else: ?>
@@ -372,6 +390,8 @@ document.getElementById('btn-resend-verify')?.addEventListener('click', async fu
   try {
     const fd = new FormData();
     fd.append('ajax_resend_verify', '1');
+    const csrfEl = document.querySelector('input[name="csrf_token"]');
+    if (csrfEl) fd.append('csrf_token', csrfEl.value);
     const resp = await fetch('profile.php', { method: 'POST', body: fd });
     const data = await resp.json();
 
@@ -418,6 +438,8 @@ document.getElementById('btn-change-email')?.addEventListener('click', async fun
     fd.append('ajax_change_email', '1');
     fd.append('new_email',  newEmail);
     fd.append('is_fictif',  isFictif);
+    const csrfEl2 = document.querySelector('input[name="csrf_token"]');
+    if (csrfEl2) fd.append('csrf_token', csrfEl2.value);
     const resp = await fetch('profile.php', { method: 'POST', body: fd });
     const data = await resp.json();
 

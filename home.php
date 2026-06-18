@@ -6,6 +6,7 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 require_once 'db/config.php';
+require_once __DIR__ . '/auth_helper.php';
 
 /**
  * Échappe le HTML, convertit les URLs en liens cliquables et préserve les sauts de ligne.
@@ -712,7 +713,7 @@ $annonces = $stmt->fetchAll();
         <h4><?= htmlspecialchars("Pas d'annonces en cours") ?></h4>
         <p class="annonce-text"><?= htmlspecialchars("Aucune annonce n'est en cours. Revenez plus tard pour de nouvelles actus !") ?></p>
         <small class="annonce-date">
-          Aucune annonce disponible. <?php if ($_SESSION["user_id"]===1): ?>
+          Aucune annonce disponible. <?php if (fh_is_admin($conn)): ?>
             <?php echo "<br><br>"; ?>
             P.S : Vous êtes administrateur du site, vous pouvez dès maintenant créer une annonce !
             <?php endif; ?>

@@ -3,12 +3,17 @@
 session_start();
 require_once 'db/config.php';
 require_once 'mail_helper.php';
+require_once __DIR__ . '/csrf_helper.php';
 
 $message = '';
 $error = '';
 
 // Traitement du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Vérification CSRF en tête
+    if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+        $error = 'Jeton CSRF invalide.';
+    } else {
     $nom = trim($_POST['nom'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $sujet = trim($_POST['sujet'] ?? '');
@@ -60,6 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Exception $e) {
             $error = "❌ Erreur lors de l'envoi du message. Veuillez réessayer.";
         }
+    }
     }
 }
 
@@ -202,6 +208,8 @@ if (isset($_SESSION['contact_success'])) {
                 <h2>Formulaire de contact</h2>
 
                 <form method="POST" class="contact-form" id="contact-form">
+
+                    <?= fh_csrf_field() ?>
 
                     <div class="form-group">
                         <label for="nom">Nom complet *</label>

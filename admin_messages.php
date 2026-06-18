@@ -3,12 +3,9 @@
 session_start();
 require_once 'db/config.php';
 require_once 'mail_helper.php';
-
-// Vérification admin
-if (!isset($_SESSION['user_id']) || $_SESSION['user_id'] != 1) {
-    header("Location: index.php");
-    exit;
-}
+require_once __DIR__ . '/auth_helper.php';
+fh_require_admin($conn);
+require_once __DIR__ . '/csrf_helper.php';
 
 $flash_success = '';
 $flash_error = '';
@@ -30,6 +27,9 @@ function parse_signalement_sujet(string $sujet): array
 
 // Traitement des actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+        $flash_error = 'Jeton CSRF invalide.';
+    } else {
 
     // Réponse à l'utilisateur 67
     if (isset($_POST['action']) && $_POST['action'] === 'repondre' && isset($_POST['message_id'])) {
@@ -95,6 +95,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($_POST['action'] === 'supprimer') {
             $conn->prepare("DELETE FROM messages_admin WHERE message_id = ?")->execute([$message_id]);
         }
+    }
+
     }
 }
 
@@ -441,6 +443,7 @@ $messages_non_lus = $count_stmt->fetchColumn();
                             <!-- Marquer lu / non lu -->
                             <form method="POST" style="display:inline;">
                                 <input type="hidden" name="message_id" value="<?= $msg['message_id'] ?>">
+                                <?= fh_csrf_field() ?>
                                 <?php if (!$msg['lu']): ?>
                                     <button type="submit" name="action" value="marquer_lu" class="btn-action btn-lu">
                                         ✓ Marquer comme lu
@@ -468,6 +471,7 @@ $messages_non_lus = $count_stmt->fetchColumn();
                             <form method="POST" style="display:inline;"
                                 onsubmit="return confirm('Supprimer ce message définitivement ?')">
                                 <input type="hidden" name="message_id" value="<?= $msg['message_id'] ?>">
+                                <?= fh_csrf_field() ?>
                                 <button type="submit" name="action" value="supprimer" class="btn-action btn-supprimer">
                                     🗑️ Supprimer
                                 </button>
@@ -517,6 +521,7 @@ $messages_non_lus = $count_stmt->fetchColumn();
                 <input type="hidden" name="action" value="repondre">
                 <input type="hidden" name="message_id" id="modal-message-id" value="">
                 <input type="hidden" name="reply_method" id="modal-reply-method" value="foodhub">
+                <?= fh_csrf_field() ?>
 
                 <!-- Choix de la méthode de réponse -->
                 <label style="display:block;font-weight:700;color:#333;margin-bottom:0.5rem;">

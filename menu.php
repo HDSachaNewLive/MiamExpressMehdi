@@ -2,6 +2,7 @@
 // menu.php
 session_start();
 require_once 'db/config.php';
+require_once 'csrf_helper.php';
 
 if (!isset($_GET['restaurant_id'])) {
     abort_404('restaurant');
@@ -102,6 +103,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (isset($_POST['delete_comment_id'])) {
+      // Vérification CSRF
+      if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+        $_SESSION['message'] = 'Jeton CSRF invalide.';
+        header("Location: menu.php?restaurant_id=".$restaurant_id);
+        exit;
+      }
         $cid = (int)$_POST['delete_comment_id'];
         $stmt = $conn->prepare("SELECT user_id, restaurant_id FROM avis WHERE avis_id=?");
         $stmt->execute([$cid]);
@@ -296,6 +303,7 @@ $type_labels = [
       <?php if ($uid === (int)$a['user_id'] || $uid === (int)$restaurant['owner_id']): ?>
         <form method="post" class="form" onsubmit="return confirm('Supprimer ce commentaire ?');">
           <input type="hidden" name="delete_comment_id" value="<?= (int)$a['avis_id'] ?>">
+          <?= fh_csrf_field() ?>
           <button type="submit" class="btn btn-small">❌</button>
         </form>
       <?php endif; ?>
@@ -371,6 +379,7 @@ $type_labels = [
       <h4>Laisser un avis</h4>
       <form id="form-avis" class="form" enctype="multipart/form-data">
         <input type="hidden" name="restaurant_id" value="<?= $restaurant_id ?>">
+        <?= fh_csrf_field() ?>
         <label>Note (1-5 étoiles)</label>
         <select name="note">
           <option>5</option><option>4</option><option>3</option><option>2</option><option>1</option>
@@ -483,24 +492,29 @@ document.querySelectorAll(".add-to-cart-btn").forEach(btn => {
 
     try {
       //ajt au panier
+      const csrfEl = document.querySelector('input[name="csrf_token"]');
+      const csrfVal = csrfEl ? encodeURIComponent(csrfEl.value) : '';
+      const bodyStr = `plat_id=${encodeURIComponent(platId)}&quantite=${encodeURIComponent(quantity)}` + (csrfVal ? `&csrf_token=${csrfVal}` : '');
+
       const response = await fetch("panier.php", {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: `plat_id=${platId}&quantite=${quantity}`
+        body: bodyStr
       });
 
       if (response.ok) {
         showMessage("✅ Article ajouté au panier avec succès!", "success", "panier.php", "🛒 Voir le panier");
         
         //récup les recommandations
+        const recoBody = `plat_id=${encodeURIComponent(platId)}` + (csrfVal ? `&csrf_token=${csrfVal}` : '');
         const recoResponse = await fetch("get_recommendations.php", {
           method: "POST",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
           },
-          body: `plat_id=${platId}`
+          body: recoBody
         });
         
         const recoData = await recoResponse.json();
@@ -577,12 +591,15 @@ document.querySelectorAll(".add-to-cart-btn").forEach(btn => {
       const platId = e.target.dataset.platId;
       
       try {
+        const csrfEl = document.querySelector('input[name="csrf_token"]');
+        const csrfVal = csrfEl ? encodeURIComponent(csrfEl.value) : '';
+        const addRecoBody = `plat_id=${encodeURIComponent(platId)}&quantite=1` + (csrfVal ? `&csrf_token=${csrfVal}` : '');
         const response = await fetch("panier.php", {
           method: "POST",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
           },
-          body: `plat_id=${platId}&quantite=1`
+          body: addRecoBody
         });
         
         if (response.ok) {
@@ -643,6 +660,8 @@ document.getElementById('form-avis')?.addEventListener('submit', async function(
   try {
     const fd = new FormData(this);
     fd.append('ajax_avis', '1');
+    const csrfElForm = this.querySelector('input[name="csrf_token"]') || document.querySelector('input[name="csrf_token"]');
+    if (csrfElForm) fd.append('csrf_token', csrfElForm.value);
     const resp = await fetch('commenter.php', { method: 'POST', body: fd });
     const data = await resp.json();
     if (data.success) {
@@ -696,6 +715,8 @@ document.addEventListener('submit', async function(e) {
   try {
     const fd = new FormData(form);
     fd.append('ajax_edit_comment', '1');
+    const csrfElEdit = form.querySelector('input[name="csrf_token"]') || document.querySelector('input[name="csrf_token"]');
+    if (csrfElEdit) fd.append('csrf_token', csrfElEdit.value);
     const resp = await fetch('edit_comment.php', { method: 'POST', body: fd });
     const data = await resp.json();
     if (data.success) {
@@ -740,6 +761,8 @@ document.addEventListener('submit', async function(e) {
     fd.append('ajax_reply', '1');
     fd.append('reply_comment_id', avisId);
     fd.append('reply_text', replyText);
+    const csrfElReply = document.querySelector('input[name="csrf_token"]');
+    if (csrfElReply) fd.append('csrf_token', csrfElReply.value);
     const resp = await fetch('menu.php?restaurant_id=<?= $restaurant_id ?>', { method: 'POST', body: fd });
     const data = await resp.json();
     if (data.success) {
@@ -1524,10 +1547,14 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.textContent = 'Envoi…';
 
     try {
+      const csrfEl = document.querySelector('input[name="csrf_token"]');
+      const csrfVal = csrfEl ? encodeURIComponent(csrfEl.value) : '';
+      const bodyStr = `avis_id=${encodeURIComponent(_signalementAvisId)}&restaurant_id=${encodeURIComponent(_signalementRestoId)}&raison=${encodeURIComponent(raison)}` + (csrfVal ? `&csrf_token=${csrfVal}` : '');
+
       const res  = await fetch('signaler_avis.php', {
         method:  'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body:    `avis_id=${_signalementAvisId}&restaurant_id=${_signalementRestoId}&raison=${encodeURIComponent(raison)}`
+        body:    bodyStr
       });
       const data = await res.json();
       fermerSignalement();

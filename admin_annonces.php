@@ -2,12 +2,9 @@
 // admin_annonces.php
 session_start();
 require_once 'db/config.php';
-
-/* Vérification admin */
-if (!isset($_SESSION['user_id']) || $_SESSION['user_id'] != 1) {
-    header("Location: index.php");
-    exit;
-}
+require_once __DIR__ . '/auth_helper.php';
+fh_require_admin($conn);
+require_once __DIR__ . '/csrf_helper.php';
 
 /* Gestion des modifications via AJAX */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
@@ -32,9 +29,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
     }
 }
 
-/* Suppression d'une annonce */
-if (isset($_GET['delete'])) {
-    $id = (int) $_GET['delete'];
+/* Suppression d'une annonce (POST + CSRF) */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_annonce'])) {
+    if (!isset($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+        $_SESSION['deleted_message'] = false;
+        $_SESSION['created_message'] = false;
+        $_SESSION['admin_error'] = 'Jeton CSRF invalide.';
+        header("Location: admin_annonces.php");
+        exit;
+    }
+    $id = (int) $_POST['delete_annonce'];
     $stmt = $conn->prepare("DELETE FROM annonces WHERE annonce_id = ?");
     $stmt->execute([$id]);
     $_SESSION['deleted_message'] = true;
@@ -46,7 +50,15 @@ if (isset($_GET['delete'])) {
 $message = "";
 $error = "";
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        // Vérification CSRF pour la création (non-AJAX, non-suppression)
+        if (!isset($_POST['ajax']) && !isset($_POST['delete_annonce'])) {
+            if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+                $_SESSION['admin_error'] = 'Jeton CSRF invalide.';
+                header("Location: admin_annonces.php");
+                exit;
+            }
+        }
     $titre = trim($_POST['titre']);
     $texte = trim($_POST['message']);
     $date_debut = $_POST['date_debut'];
@@ -70,7 +82,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header("Location: admin_annonces.php");
             exit;
         } catch (PDOException $e) {
-            $error = "❌ Erreur : " . $e->getMessage();
+            error_log('[admin_annonces] Erreur création annonce: ' . $e->getMessage());
+            $error = "❌ Erreur serveur. Consulte les logs.";
         }
     }
 }
@@ -123,6 +136,7 @@ if ($error && $_SERVER['REQUEST_METHOD'] !== 'POST') {
         <h3>Créer une nouvelle annonce</h3>
 
         <form method="POST">
+            <?= fh_csrf_field() ?>
 
             <label>Titre de l'annonce :</label>
             <input type="text" name="titre" required placeholder="ex: Nouvelle fonctionnalité !">
@@ -157,11 +171,10 @@ if ($error && $_SERVER['REQUEST_METHOD'] !== 'POST') {
                 <th>Action</th>
             </tr>
 
-            <?php foreach ($annonces as $a): ?>
-            <?php 
+            <?php foreach ($annonces as $a): 
                 $now = date('Y-m-d H:i:s');
-                $is_expired = $a['date_fin'] < $now;
-                $is_pending = $a['date_debut'] > $now;
+                $is_expired = (strtotime($a['date_fin']) < time());
+                $is_pending = (strtotime($a['date_debut']) > time());
                 $is_active = $a['actif'] && !$is_expired && !$is_pending;
             ?>
             <tr class="<?= $is_active ? '' : 'inactive-annonce' ?>">
@@ -185,9 +198,11 @@ if ($error && $_SERVER['REQUEST_METHOD'] !== 'POST') {
                     <?php endif; ?>
                 </td>
                 <td>
-                    <a class="delete" href="?delete=<?= $a['annonce_id'] ?>" onclick="return confirm('Supprimer cette annonce ?');">
-                        Supprimer
-                    </a>
+                    <form method="POST" style="display:inline;" onsubmit="return confirm('Supprimer cette annonce ?');">
+                        <input type="hidden" name="delete_annonce" value="<?= $a['annonce_id'] ?>">
+                        <?= fh_csrf_field() ?>
+                        <button class="delete" type="submit">Supprimer</button>
+                    </form>
                 </td>
             </tr>
             <?php endforeach; ?>
@@ -638,6 +653,8 @@ a.delete:hover {
         formData.append('annonce_id', id);
         formData.append('field', field);
         formData.append('value', newValue);
+        const csrfEl = document.querySelector('input[name="csrf_token"]');
+        if (csrfEl) formData.append('csrf_token', csrfEl.value);
 
         fetch('admin_annonces.php', {
           method: 'POST',

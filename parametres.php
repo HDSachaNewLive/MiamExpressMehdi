@@ -2,6 +2,7 @@
 // parametres.php
 session_start();
 require_once 'db/config.php';
+require_once __DIR__ . '/csrf_helper.php';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
@@ -29,6 +30,12 @@ if ($msg && $_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 // Traitement du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sauvegarder_prefs'])) {
+    if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+        $_SESSION['pref_msg'] = 'Jeton CSRF invalide.';
+        header('Location: parametres.php');
+        exit;
+    }
+
     $notif_forum        = isset($_POST['notif_forum_actif'])  ? 1 : 0;
     $reduire_animations = isset($_POST['reduire_animations']) ? 1 : 0;
     $profil_prive       = isset($_POST['profil_prive'])       ? 1 : 0;
@@ -86,6 +93,7 @@ $user = $stmt_user->fetch();
 
     <form method="POST" class="form-parametres">
         <input type="hidden" name="sauvegarder_prefs" value="1">
+        <?= fh_csrf_field() ?>
 
         <!-- Section Notifications Forum -->
         <div class="pref-section">

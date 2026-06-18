@@ -1,9 +1,17 @@
 <?php
 session_start();
 require_once 'db/config.php';
+require_once __DIR__ . '/csrf_helper.php';
 
 if (!isset($_SESSION['user_id']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(403);
+    exit;
+}
+
+// Vérification CSRF optionnelle
+if (isset($_POST['csrf_token']) && !fh_verify_csrf($_POST['csrf_token'])) {
+    http_response_code(403);
+    echo 'CSRF invalid';
     exit;
 }
 

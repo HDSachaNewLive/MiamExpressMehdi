@@ -555,10 +555,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const restaurantId = btn.dataset.restaurantId;
             
             try {
+                const csrfEl = document.querySelector('input[name="csrf_token"]');
+                const csrfVal = csrfEl ? encodeURIComponent(csrfEl.value) : '';
+                const bodyStr = `restaurant_id=${encodeURIComponent(restaurantId)}` + (csrfVal ? `&csrf_token=${csrfVal}` : '');
                 const response = await fetch('toggle_favori.php', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                    body: `restaurant_id=${restaurantId}`
+                  method: 'POST',
+                  headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                  body: bodyStr
                 });
                 
                 const data = await response.json();

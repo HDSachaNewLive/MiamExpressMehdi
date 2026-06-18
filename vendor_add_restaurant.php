@@ -3,6 +3,8 @@
 session_start();
 require_once "db/config.php";
 require_once "detection_NSFW.php";
+require_once "upload_helper.php";
+require_once "csrf_helper.php";
 if (!isset($_SESSION["user_id"]) || ($_SESSION["type_compte"] ?? "") !== "proprietaire") { 
     header("Location: login.php"); exit; 
 }
@@ -13,6 +15,9 @@ $msg = "";
 $siteOwnerId = 1;
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+    $msg = 'Jeton CSRF invalide.';
+  } else {
     $nom = trim($_POST["nom_restaurant"] ?? "");
     $adresse = trim($_POST["adresse"] ?? "");
     $latitude = $_POST["latitude"] !== "" ? (float)$_POST["latitude"] : null;
@@ -32,6 +37,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             if ($p_nom_check !== "") {
                 $plats_pour_check[] = ['nom_plat' => $p_nom_check, 'description_plat' => $p_desc_check];
             }
+          }
         }
         $precheck = fh_verify_restaurant($nom, $desc, $adresse, $categorie, $plats_pour_check);
 
@@ -62,23 +68,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 // Gestion image — nom de champ plat : "plat_image_0", "plat_image_1", etc.
                 // PHP ne supporte pas les $_FILES multidimensionnels (plats[0][image]),
                 // on utilise donc des noms plats séparés.
-                $image_path = null;
-                $file_key   = "plat_image_" . $idx;
+            $image_path = null;
+            $file_key   = "plat_image_" . $idx;
 
-                if (isset($_FILES[$file_key]) && $_FILES[$file_key]["error"] === UPLOAD_ERR_OK) {
-                    $file_tmp  = $_FILES[$file_key]["tmp_name"];
-                    $file_name = $_FILES[$file_key]["name"];
-                    $file_size = $_FILES[$file_key]["size"];
-                    $file_ext  = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-
-                    if (in_array($file_ext, $allowed_ext) && $file_size <= 5242880) {
-                        $new_filename = 'plat_new_' . $resto_id . '_' . $idx . '_' . uniqid() . '.' . $file_ext;
-                        $destination  = $upload_dir . $new_filename;
-                        if (move_uploaded_file($file_tmp, $destination)) {
-                            $image_path = $destination;
-                        }
-                    }
-                }
+            $uploadRes = fh_handle_uploaded_field($file_key, $upload_dir, 5242880);
+            if ($uploadRes['success'] && !empty($uploadRes['results'][0]['success'])) {
+              $image_path = $upload_dir . $uploadRes['results'][0]['filename'];
+            }
 
                 $stmt = $conn->prepare("INSERT INTO plats (restaurant_id, nom_plat, description_plat, type_plat, prix, image_path) VALUES (?, ?, ?, ?, ?, ?)");
                 $stmt->execute([$resto_id, $p_nom, $p_desc, $p_type, $p_prix, $image_path]);
@@ -116,32 +112,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
 
         $msg = "Restaurant et plats ajoutés ✅ (en attente de validation par l'admin)";
-
-        // ── Déclencher la vérification automatique après 10 min (fire-and-forget côté serveur) ──
-        // On utilise une requête HTTP interne non-bloquante (fsockopen) : fonctionne même
-        // si le navigateur est fermé. Le JS ci-dessous sert uniquement de fallback.
-        try {
-            $host     = $_SERVER['HTTP_HOST'] ?? 'foodhub-sio.alwaysdata.net';
-            $scheme   = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'ssl' : 'tcp';
-            $port     = ($scheme === 'ssl') ? 443 : 80;
-            $path     = '/auto_verify_restaurant.php?ajax=1&delay=600&rid=' . (int)$resto_id;
-            // On ouvre le socket sans attendre la réponse (timeout 1 s)
-            $fp = @fsockopen($scheme . '://' . $host, $port, $errno, $errstr, 1);
-            if ($fp) {
-                $req  = "GET {$path} HTTP/1.1\r\n";
-                $req .= "Host: {$host}\r\n";
-                $req .= "Connection: close\r\n\r\n";
-                fwrite($fp, $req);
-                fclose($fp);
-            }
-        } catch (Exception $e) {
-            // silencieux — le JS prend le relais
-        }
-        // Fallback JS (si fsockopen échoue et que l'utilisateur reste sur la page)
-        $_SESSION['pending_auto_verify'] = [
-            'restaurant_id' => (int)$resto_id,
-            'after'         => time() + 600,
-        ];
+        // La vérification automatique est prise en charge par la tâche planifiée (cron alwaysdata)
+        // qui exécute auto_verify_restaurant.php toutes les 10 minutes.
 
         } // fin else pré-vérification
     }
@@ -171,6 +143,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <?php if ($msg) echo "<div class=\"success\">".htmlspecialchars($msg)."</div>"; ?>
 
 <form method="post" class="form" id="restaurant-form" enctype="multipart/form-data">
+  <?= fh_csrf_field() ?>
     <input name="nom_restaurant" placeholder="Nom du restaurant" maxlength="55" required>
     <input name="adresse" placeholder="Adresse" data-address-autocomplete data-lat="[name=latitude]" data-lng="[name=longitude]">
     <input name="latitude" placeholder="Latitude">
@@ -532,30 +505,5 @@ window.vantaEffect = VANTA.WAVES({
 </script>
 <script src="address-autocomplete.js"></script>
 
-<?php if (isset($_SESSION['pending_auto_verify'])): ?>
-<?php
-  $pav_after  = (int)$_SESSION['pending_auto_verify']['after'];
-  $pav_rid    = (int)$_SESSION['pending_auto_verify']['restaurant_id'];
-  unset($_SESSION['pending_auto_verify']); // libéré ici, AVANT d'écrire le JS
-?>
-<script>
-// Fallback JS : déclenche la vérification si l'utilisateur reste sur la page
-// et si le déclenchement PHP côté serveur a échoué.
-(function() {
-  const afterTs = <?= $pav_after ?>;
-  const restoId = <?= $pav_rid ?>;
-  const nowTs   = Math.floor(Date.now() / 1000);
-  const delayMs = Math.max(0, (afterTs - nowTs) * 1000);
-
-  setTimeout(async () => {
-    try {
-      await fetch('/auto_verify_restaurant.php?ajax=1', { method: 'GET' });
-    } catch (e) {
-      // silencieux
-    }
-  }, delayMs);
-})();
-</script>
-<?php endif; ?>
 </body>
 </html>

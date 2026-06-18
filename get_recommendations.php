@@ -2,11 +2,18 @@
 //get_recommendations.php
 session_start();
 require_once 'db/config.php';
+require_once __DIR__ . '/csrf_helper.php';
 
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['user_id']) || !isset($_POST['plat_id'])) {
     echo json_encode(['error' => 'Invalid request']);
+    exit;
+}
+
+// Vérification CSRF optionnelle
+if (isset($_POST['csrf_token']) && !fh_verify_csrf($_POST['csrf_token'])) {
+    echo json_encode(['error' => 'Invalid CSRF']);
     exit;
 }
 

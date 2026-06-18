@@ -2,10 +2,17 @@
 // checkout.php
 session_start();
 require_once 'db/config.php';
+require_once __DIR__ . '/csrf_helper.php';
 if (!isset($_SESSION['user_id'])) { header('Location: login.php'); exit; }
 $uid = (int)$_SESSION['user_id'];
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { header('Location: panier.php'); exit; }
+
+// Vérifier token CSRF
+if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+    header('Location: panier.php');
+    exit;
+}
 
 $adresse = trim($_POST['adresse_livraison'] ?? $_SESSION['adresse_livraison'] ?? '');
 $mode = in_array($_POST['mode_paiement'] ?? 'carte', ['carte','paypal','livraison']) ? $_POST['mode_paiement'] : 'carte';
@@ -122,6 +129,9 @@ try {
     
 } catch (Exception $e) {
     $conn->rollBack();
-    die("Erreur lors de la création de la commande : " . $e->getMessage());
+    error_log('[checkout] Erreur création commande: ' . $e->getMessage());
+    $_SESSION['checkout_error'] = 'Erreur serveur lors de la création de la commande. Réessaie plus tard.';
+    header('Location: panier.php');
+    exit;
 }
 ?>

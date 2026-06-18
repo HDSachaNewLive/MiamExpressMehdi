@@ -1,5 +1,7 @@
 <!-- sidebar.php -->
 <?php
+require_once 'auth_helper.php';
+require_once __DIR__ . '/csrf_helper.php';
 // INSERT: calcul des notifications au début (avant sortie HTML)
 $notifCount = 0;
 $pendingRestoCount = 0;
@@ -86,7 +88,7 @@ if (isset($_SESSION['user_id'])) {
     </a>
     <a href="parametres.php">⚙️ Paramètres</a>
     
-  <?php if(isset($_SESSION['user_id']) && (int)$_SESSION['user_id'] === 1 && isset($conn)): ?>
+  <?php if (isset($_SESSION['user_id']) && isset($conn) && fh_is_admin($conn)): ?>
     <a href="admin_users.php">👥 Utilisateurs</a>
     <a href="admin_messages.php">📩 Messages</a>
     <a href="admin_coupons.php">🎟️ Coupons</a>
@@ -112,6 +114,8 @@ if (isset($_SESSION['user_id'])) {
 </button>
 
 <?php include 'vanta_freeze.php'; ?>
+<!-- Champ CSRF global (caché) pour que le JS puisse le récupérer via document.querySelector -->
+<div style="display:none;" id="fh-global-csrf"><?= fh_csrf_field() ?></div>
 <?php
 // récupération nombre de notifs non lues
 $notifCount = 0;

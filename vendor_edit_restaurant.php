@@ -3,6 +3,8 @@
 session_start();
 require_once 'db/config.php';
 include 'vanta_freeze.php';
+require_once 'csrf_helper.php';
+require_once 'upload_helper.php';
 if (!isset($_SESSION['user_id']) || ($_SESSION['type_compte'] ?? '') !== 'proprietaire') {
     header('Location: login.php');
     exit;
@@ -28,6 +30,15 @@ if (!$resto) abort_404('restaurant');
 $stmt = $conn->prepare("SELECT * FROM plats WHERE restaurant_id=?");
 $stmt->execute([$rid]);
 $plats = $stmt->fetchAll();
+
+// Validation CSRF pour toutes les requêtes POST (forms doivent inclure fh_csrf_field())
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+    $_SESSION['msg'] = 'Jeton CSRF invalide.';
+    header('Location: vendor_edit_restaurant.php?restaurant_id=' . $rid);
+    exit;
+  }
+}
 
 //GESTION POST
 
@@ -76,22 +87,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_plat'])) {
     $type = in_array($_POST['plat_type'] ?? "", ["entree", "plat", "accompagnement", "boisson", "dessert", "sauce"])
             ? $_POST['plat_type'] : "plat";
 
-    // Gestion image du plat
+    // Gestion image du plat (sécurisé)
     $image_path = null;
-    if (isset($_FILES['plat_image']) && $_FILES['plat_image']['error'] === UPLOAD_ERR_OK) {
-        $upload_dir = 'uploads/plats/';
-        if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
-        $file_ext = strtolower(pathinfo($_FILES['plat_image']['name'], PATHINFO_EXTENSION));
-        $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-        if (in_array($file_ext, $allowed) && $_FILES['plat_image']['size'] <= 5242880) {
-            $new_filename = 'plat_' . $rid . '_' . uniqid() . '.' . $file_ext;
-            $destination = $upload_dir . $new_filename;
-            if (move_uploaded_file($_FILES['plat_image']['tmp_name'], $destination)) {
-                $image_path = $destination;
-            }
-        } else {
-            $msg = "Image invalide ou trop volumineuse (max 5MB, formats : jpg, png, gif, webp).";
-        }
+    $upload_dir = 'uploads/plats/';
+    if (isset($_FILES['plat_image'])) {
+      if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+      $uploadRes = fh_handle_uploaded_field('plat_image', $upload_dir, 5242880);
+      if ($uploadRes['success'] && !empty($uploadRes['results'][0]['success'])) {
+        $image_path = $upload_dir . $uploadRes['results'][0]['filename'];
+      } elseif (!empty($uploadRes['results'][0]['error'])) {
+        $msg = $uploadRes['results'][0]['error'] ?? $uploadRes['error'] ?? "Image invalide ou trop volumineuse (max 5MB).";
+      }
     }
 
     $stmt = $conn->prepare("INSERT INTO plats (restaurant_id, nom_plat, description_plat, type_plat, prix, image_path) VALUES (?, ?, ?, ?, ?, ?)");
@@ -131,25 +137,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_plat_image']))
         $imgStmt->execute([$pid, $rid]);
         $platRow = $imgStmt->fetch();
 
-        if (isset($_FILES['plat_image_existing']) && $_FILES['plat_image_existing']['error'] === UPLOAD_ERR_OK) {
-            $upload_dir = 'uploads/plats/';
-            if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
-            $file_ext = strtolower(pathinfo($_FILES['plat_image_existing']['name'], PATHINFO_EXTENSION));
-            $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-            if (in_array($file_ext, $allowed) && $_FILES['plat_image_existing']['size'] <= 5242880) {
-                $new_filename = 'plat_' . $rid . '_' . $pid . '_' . uniqid() . '.' . $file_ext;
-                $destination = $upload_dir . $new_filename;
-                if (move_uploaded_file($_FILES['plat_image_existing']['tmp_name'], $destination)) {
-                    if ($platRow && $platRow['image_path'] && file_exists($platRow['image_path'])) {
-                        unlink($platRow['image_path']);
-                    }
-                    $stmt = $conn->prepare("UPDATE plats SET image_path=? WHERE plat_id=? AND restaurant_id=?");
-                    $stmt->execute([$destination, $pid, $rid]);
-                    $msg = "Image du plat mise à jour.";
-                }
-            } else {
-                $msg = "Image invalide ou trop volumineuse (max 5MB).";
+        if (isset($_FILES['plat_image_existing']) && $_FILES['plat_image_existing']['error'] !== UPLOAD_ERR_NO_FILE) {
+          $upload_dir = 'uploads/plats/';
+          if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+          $uploadRes = fh_handle_uploaded_field('plat_image_existing', $upload_dir, 5242880);
+          if ($uploadRes['success'] && !empty($uploadRes['results'][0]['success'])) {
+            $destination = $upload_dir . $uploadRes['results'][0]['filename'];
+            if ($platRow && $platRow['image_path'] && file_exists($platRow['image_path'])) {
+              unlink($platRow['image_path']);
             }
+            $stmt = $conn->prepare("UPDATE plats SET image_path=? WHERE plat_id=? AND restaurant_id=?");
+            $stmt->execute([$destination, $pid, $rid]);
+            $msg = "Image du plat mise à jour.";
+          } else {
+            $msg = $uploadRes['results'][0]['error'] ?? $uploadRes['error'] ?? "Image invalide ou trop volumineuse (max 5MB).";
+          }
         }
     }
 
@@ -216,8 +218,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_restaurant']))
 
 <!-- FORMULAIRE RESTAURANT -->
 <form method="post" class="form">
-    <input type="hidden" name="restaurant_id" value="<?= (int)$resto['restaurant_id'] ?>">
-    <input type="hidden" name="update_restaurant" value="1">
+  <input type="hidden" name="restaurant_id" value="<?= (int)$resto['restaurant_id'] ?>">
+  <input type="hidden" name="update_restaurant" value="1">
+  <?= fh_csrf_field() ?>
     <label>Nom du restaurant</label>
     <input name="nom_restaurant" maxlength="55" value="<?= htmlspecialchars($resto['nom_restaurant']) ?>"><br>
     <label>Adresse</label>
@@ -257,7 +260,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_restaurant']))
 <h3>Ajouter un plat</h3>
 <form method="post" class="form form-add-plat" enctype="multipart/form-data">
     <input type="hidden" name="restaurant_id" value="<?= (int)$resto['restaurant_id'] ?>">
-    <input type="hidden" name="add_plat" value="1">
+                <input type="hidden" name="add_plat" value="1">
+                <?= fh_csrf_field() ?>
     <label>Nom du plat</label>
     <input placeholder="Nom du plat (Ex: Pâtes forêstières)" type="text" name="plat_nom" required>
     <label>Description</label>
@@ -301,6 +305,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_restaurant']))
                 <form method="post" style="display:inline; margin-top:2px;">
                     <input type="hidden" name="restaurant_id" value="<?= (int)$resto['restaurant_id'] ?>">
                     <input type="hidden" name="plat_id" value="<?= (int)$p['plat_id'] ?>">
+                  <?= fh_csrf_field() ?>
                     <button type="submit" name="delete_plat_image" class="btn-img-del" onclick="return confirm('Supprimer l\'image de ce plat ?')">🗑️ Supprimer</button>
                 </form>
             </div>
@@ -310,6 +315,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_restaurant']))
         <form method="post" class="form-inline-img" enctype="multipart/form-data">
             <input type="hidden" name="restaurant_id" value="<?= (int)$resto['restaurant_id'] ?>">
             <input type="hidden" name="plat_id" value="<?= (int)$p['plat_id'] ?>">
+          <?= fh_csrf_field() ?>
             <label class="label-img-small">
                 <?= (!empty($p['image_path']) && file_exists($p['image_path'])) ? '🔄 Changer l\'image' : '📷 Ajouter une image' ?>
                 <span style="color:#888;font-size:0.8rem;">(optionnel, max 5MB)</span>
@@ -330,6 +336,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_restaurant']))
             <input type="hidden" name="restaurant_id" value="<?= (int)$resto['restaurant_id'] ?>">
             <input type="hidden" name="plat_id" value="<?= (int)$p['plat_id'] ?>">
             <input type="hidden" name="update_plat_type" value="1">
+          <?= fh_csrf_field() ?>
             <label style="margin:0;">Type :</label>
             <select name="new_type" onchange="this.form.submit()" style="background: transparent; backdrop-filter: blur(17px); width:auto; padding:6px;">
                 <option value="entree" <?= $p['type_plat'] === 'entree' ? 'selected' : '' ?>>🥗 Entrée</option>
@@ -344,6 +351,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_restaurant']))
         <form method="post" style="margin-top:8px;" onsubmit="return confirm('Supprimer le plat « <?= addslashes(htmlspecialchars($p['nom_plat'])) ?> » ? Cette action est irréversible.');">
             <input type="hidden" name="delete_plat_id" value="<?= (int)$p['plat_id'] ?>">
             <input type="hidden" name="restaurant_id" value="<?= (int)$resto['restaurant_id'] ?>">
+          <?= fh_csrf_field() ?>
             <button class="btn-alt" type="submit">Supprimer le plat</button>
         </form>
     </div>
@@ -355,6 +363,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_restaurant']))
 <!-- BOUTON SUPPRIMER LE RESTAURANT -->
 <form method="post" onsubmit="return confirm('Tu es sûr de vouloir supprimer ce restaurant ? Cette action est irréversible.');">
   <input type="hidden" name="delete_restaurant" value="1">
+  <?= fh_csrf_field() ?>
   <button class="btn-alt" type="submit" style="background:#ff4d4d;color:white;width:45%;margin-top:10px; left: 425px;">
     🗑️ Supprimer le restaurant
   </button>

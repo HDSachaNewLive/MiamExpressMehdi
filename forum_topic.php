@@ -6,6 +6,8 @@ if (!isset($_SESSION['user_id'])) {
   exit;
 }
 require_once 'db/config.php';
+require_once __DIR__ . '/csrf_helper.php';
+require_once __DIR__ . '/auth_helper.php';
 function truncate_words(string $text, int $max_words = 6): string {
     $words = preg_split('/\s+/u', trim($text), -1, PREG_SPLIT_NO_EMPTY);
     if (count($words) <= $max_words) return $text;
@@ -33,6 +35,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax']) && isset($_PO
     exit;
   }
 
+  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+    echo json_encode(['success' => false, 'error' => 'Jeton CSRF invalide']);
+    exit;
+  }
+
   $topic_id = (int) ($_GET['topic_id'] ?? 0);
   $contenu = trim($_POST['contenu'] ?? '');
 
@@ -51,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax']) && isset($_PO
     exit;
   }
 
-  $is_admin = ($uid === 1);
+  $is_admin = fh_is_admin($conn);
   if ($topic['verrouille'] && !$is_admin) {
     echo json_encode(['success' => false, 'error' => 'Ce sujet est verrouillé']);
     exit;
@@ -164,8 +171,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax']) && isset($_PO
     echo json_encode(['success' => false, 'error' => 'Non connecté']);
     exit;
   }
+  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+    echo json_encode(['success' => false, 'error' => 'Jeton CSRF invalide']);
+    exit;
+  }
   $mid = (int) ($_POST['message_id'] ?? 0);
-  $is_admin_del = ($uid_del === 1);
+  $is_admin_del = fh_is_admin($conn);
   $stmt = $conn->prepare("SELECT user_id, topic_id FROM forum_messages WHERE message_id = ?");
   $stmt->execute([$mid]);
   $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -187,7 +198,7 @@ if (isset($_GET['poll']) && $_GET['poll'] === '1' && isset($_GET['last_message_i
     echo json_encode(['error' => 'not_logged']);
     exit;
   }
-  $is_admin_poll = ($uid_poll === 1);
+  $is_admin_poll = fh_is_admin($conn);
   $topic_id_poll = (int) ($_GET['topic_id'] ?? 0);
   $last_id = (int) ($_GET['last_message_id'] ?? 0);
   if (!$topic_id_poll) {
@@ -245,7 +256,7 @@ if (isset($_GET['poll']) && $_GET['poll'] === '1' && isset($_GET['last_message_i
 //init variables (bah ouais)
 $connected = isset($_SESSION['user_id']);
 $uid = $connected ? (int) $_SESSION['user_id'] : 0;
-$is_admin = ($uid === 1);
+$is_admin = fh_is_admin($conn);
 
 $topic_id = isset($_GET['topic_id']) ? (int) $_GET['topic_id'] : 0;
 
@@ -276,6 +287,10 @@ $conn->prepare("UPDATE forum_topics SET vues = vues + 1 WHERE topic_id = ?")->ex
 
 // Actions admin
 if ($is_admin && isset($_POST['admin_action'])) {
+  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+    header("Location: forum_topic.php?topic_id=" . $topic_id);
+    exit;
+  }
   $action = $_POST['admin_action'];
 
   if ($action === 'epingler') {
@@ -300,16 +315,20 @@ if ($is_admin && isset($_POST['admin_action'])) {
 
 // Supprimer un message
 if (isset($_POST['delete_message']) && ($connected || $is_admin)) {
-  $message_id = (int) $_POST['message_id'];
+  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+    $error = 'Jeton CSRF invalide.';
+  } else {
+    $message_id = (int) $_POST['message_id'];
 
-  $stmt = $conn->prepare("SELECT user_id FROM forum_messages WHERE message_id = ?");
-  $stmt->execute([$message_id]);
-  $msg = $stmt->fetch(PDO::FETCH_ASSOC);
+    $stmt = $conn->prepare("SELECT user_id FROM forum_messages WHERE message_id = ?");
+    $stmt->execute([$message_id]);
+    $msg = $stmt->fetch(PDO::FETCH_ASSOC);
 
-  if ($msg && ($msg['user_id'] == $uid || $is_admin)) {
-    $conn->prepare("DELETE FROM forum_messages WHERE message_id = ?")->execute([$message_id]);
-    $conn->prepare("UPDATE forum_topics SET nb_reponses = nb_reponses - 1 WHERE topic_id = ?")->execute([$topic_id]);
-    $message = "✅ Message supprimé.";
+    if ($msg && ($msg['user_id'] == $uid || $is_admin)) {
+      $conn->prepare("DELETE FROM forum_messages WHERE message_id = ?")->execute([$message_id]);
+      $conn->prepare("UPDATE forum_topics SET nb_reponses = nb_reponses - 1 WHERE topic_id = ?")->execute([$topic_id]);
+      $message = "✅ Message supprimé.";
+    }
   }
 }
 
@@ -378,6 +397,7 @@ $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
       <div class="admin-actions">
         <form method="post" style="display: inline;">
           <input type="hidden" name="admin_action" value="epingler">
+          <?= fh_csrf_field() ?>
           <button type="submit" class="btn-admin">
             <?= $topic['epingle'] ? '📌 Désépingler' : '📌 Épingler' ?>
           </button>
@@ -385,6 +405,7 @@ $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         <form method="post" style="display: inline;">
           <input type="hidden" name="admin_action" value="verrouiller">
+          <?= fh_csrf_field() ?>
           <button type="submit" class="btn-admin">
             <?= $topic['verrouille'] ? '🔓 Déverrouiller' : '🔒 Verrouiller' ?>
           </button>
@@ -392,6 +413,7 @@ $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         <form method="post" style="display: inline;" onsubmit="return confirm('Voulez vous VRAIMENT supprimer ce sujet (les messages seront perdus à jamais !) ?')">
           <input type="hidden" name="admin_action" value="supprimer">
+          <?= fh_csrf_field() ?>
           <button type="submit" class="btn-admin btn-danger">🗑️ Supprimer</button>
         </form>
       </div>
@@ -460,9 +482,11 @@ $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
                       <div class="bubble-footer"><span class="bubble-edited">✏️</span></div>
                     <?php endif; ?>
                   </div>
-                  <?php if ($connected && ($msg['user_id'] == $uid || $is_admin)): ?>
-                    <button type="button" class="btn-delete-tiny btn-action-hover"
-                      onclick="deleteMessage(<?= $msg['message_id'] ?>)">🗑️</button>
+                  <?php if (!(!$msg['auteur_supprime'] && $msg['user_id'] == $topic['user_id'] && $index === 0)): ?>
+                    <?php if ($connected && ($msg['user_id'] == $uid || $is_admin)): ?>
+                      <button type="button" class="btn-delete-tiny btn-action-hover"
+                        onclick="deleteMessage(<?= $msg['message_id'] ?>)">🗑️</button>
+                    <?php endif; ?>
                   <?php endif; ?>
                 </div>
               </div>
@@ -497,6 +521,7 @@ $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
             <form method="post" class="reply-form" id="reply-form">
               <input type="hidden" name="reply" value="1">
+              <?= fh_csrf_field() ?>
               <input type="hidden" name="parent_id" id="reply-parent-id" value="">
               <textarea name="contenu" id="reply-content" placeholder="Écris un message..."></textarea>
               <button type="submit" class="btn-send">Envoyer</button>
@@ -576,6 +601,8 @@ $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
           formData.append('contenu', contenu);
           const parentId = document.getElementById('reply-parent-id').value;
           if (parentId) formData.append('parent_id', parentId);
+          const csrfEl = document.querySelector('input[name="csrf_token"]');
+          if (csrfEl) formData.append('csrf_token', csrfEl.value);
 
           try {
             const response = await fetch(window.location.href, {
@@ -605,6 +632,8 @@ $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
               const topic_id = <?php echo (int) $topic_id; ?>;
               const fd = new FormData();
               fd.append('topic_id', topic_id);
+              const csrfEl2 = document.querySelector('input[name="csrf_token"]');
+              if (csrfEl2) fd.append('csrf_token', csrfEl2.value);
               fetch('marquer_notifs_forum_lues.php', { method: 'POST', body: fd }).catch(() => {});
 
               // Scroll vers le bas
@@ -723,6 +752,8 @@ $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
       formData.append('ajax', '1');
       formData.append('delete_message_ajax', '1');
       formData.append('message_id', messageId);
+      const csrfElDel = document.querySelector('input[name="csrf_token"]');
+      if (csrfElDel) formData.append('csrf_token', csrfElDel.value);
 
       try {
         const response = await fetch(window.location.href, { method: 'POST', body: formData });
@@ -813,6 +844,8 @@ $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
           // Marquer les notifs de ce topic comme lues immédiatement
           const fd = new FormData();
           fd.append('topic_id', <?= (int) $topic_id ?>);
+          const csrfElPoll = document.querySelector('input[name="csrf_token"]');
+          if (csrfElPoll) fd.append('csrf_token', csrfElPoll.value);
           fetch('marquer_notifs_forum_lues.php', { method: 'POST', body: fd }).catch(() => {});
 
           // ── Détecter les messages supprimés ──
@@ -872,6 +905,8 @@ $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
       const topic_id = <?php echo (int) $topic_id; ?>;
       const fd = new FormData();
       fd.append('topic_id', topic_id);
+      const csrfElInit = document.querySelector('input[name="csrf_token"]');
+      if (csrfElInit) fd.append('csrf_token', csrfElInit.value);
       fetch('marquer_notifs_forum_lues.php', { method: 'POST', body: fd }).catch(() => {});
       
       // Scroll vers le dernier message au chargement

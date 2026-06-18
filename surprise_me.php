@@ -2,6 +2,7 @@
 // surprise_me.php - Version avec contrainte sur le total
 session_start();
 require_once 'db/config.php';
+require_once 'csrf_helper.php';
 
 header('Content-Type: application/json');
 
@@ -16,6 +17,13 @@ $budget_max = isset($_POST['budget_max']) ? (float)$_POST['budget_max'] : 100;
 // Validation
 if ($budget_min >= $budget_max) {
     echo json_encode(['error' => 'invalid_budget', 'message' => 'Budget minimum doit être inférieur au maximum']);
+    exit;
+}
+
+// Si un token CSRF est présent, vérifier-le (compatibilité : si absent, on continue)
+if (isset($_POST['csrf_token']) && !fh_verify_csrf($_POST['csrf_token'])) {
+    http_response_code(403);
+    echo json_encode(['error' => 'forbidden', 'message' => 'Jeton CSRF invalide.']);
     exit;
 }
 
@@ -87,6 +95,8 @@ try {
     ]);
     
 } catch (Exception $e) {
-    echo json_encode(['error' => 'server_error', 'message' => $e->getMessage()]);
+    error_log('[surprise_me] Exception: ' . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['error' => 'server_error', 'message' => 'Erreur serveur.']);
 }
 ?>

@@ -2,6 +2,7 @@
 // profil_public.php
 session_start();
 require_once 'db/config.php';
+require_once 'auth_helper.php';
 
 $target_user_id = (int)($_GET['user_id'] ?? 0);
 $connected = isset($_SESSION['user_id']);
@@ -56,7 +57,7 @@ $profil_prive = (bool)($prefs_target['profil_prive'] ?? 0);
 
 // Le visiteur connecté peut-il voir le profil ?
 $is_owner      = $connected && (int)$_SESSION['user_id'] === $target_user_id;
-$is_admin      = $connected && (int)$_SESSION['user_id'] === 1;
+$is_admin      = $connected && fh_is_admin($conn);
 $profil_masque = $profil_prive && !$is_owner && !$is_admin;
 
 // Préférences d'animations du visiteur connecté
@@ -184,7 +185,8 @@ $couleur_vanta = $user['couleur_vanta'] ?? '#dba1b2';
           <h1><?= htmlspecialchars($user['nom_user']) ?></h1>
           
           <div class="profil-badges">
-            <?php if ($user['user_id'] == 1): ?>
+            <?php $isAdminBadge = ($user['type_compte'] === 'admin') || (!empty($user['role']) && $user['role'] === 'admin'); ?>
+            <?php if ($isAdminBadge): ?>
               <span class="badge admin">⚙️ Administrateur</span>
             <?php else: ?>
               <span class="badge <?= $user['type_compte'] ?>">

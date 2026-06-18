@@ -3,6 +3,7 @@
 // Page atteinte via le lien envoyé par email (comptes avec email réel)
 session_start();
 require_once 'db/config.php';
+require_once __DIR__ . '/csrf_helper.php';
 
 $token = trim($_GET['token'] ?? '');
 $status = 'form'; // 'form' | 'success' | 'expired' | 'error'
@@ -34,21 +35,25 @@ if ($token === '') {
 
 // Traitement POST : enregistrer le nouveau mot de passe
 if ($status === 'form' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-  $new_pass = $_POST['new_pass'] ?? '';
-  $confirm_pass = $_POST['confirm_pass'] ?? '';
+  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+    $errors[] = 'Jeton CSRF invalide.';
+  } else {
+    $new_pass = $_POST['new_pass'] ?? '';
+    $confirm_pass = $_POST['confirm_pass'] ?? '';
 
-  if (strlen($new_pass) < 6) {
-    $errors[] = "Le mot de passe doit contenir au moins 6 caractères.";
-  }
-  if ($new_pass !== $confirm_pass) {
-    $errors[] = "Les mots de passe ne correspondent pas.";
-  }
+    if (strlen($new_pass) < 6) {
+      $errors[] = "Le mot de passe doit contenir au moins 6 caractères.";
+    }
+    if ($new_pass !== $confirm_pass) {
+      $errors[] = "Les mots de passe ne correspondent pas.";
+    }
 
-  if (empty($errors)) {
-    $hash = password_hash($new_pass, PASSWORD_DEFAULT);
-    $conn->prepare("UPDATE users SET motdepasse = ? WHERE user_id = ?")->execute([$hash, $row['user_id']]);
-    $conn->prepare("UPDATE email_tokens SET used = 1 WHERE token_id = ?")->execute([$row['token_id']]);
-    $status = 'success';
+    if (empty($errors)) {
+      $hash = password_hash($new_pass, PASSWORD_DEFAULT);
+      $conn->prepare("UPDATE users SET motdepasse = ? WHERE user_id = ?")->execute([$hash, $row['user_id']]);
+      $conn->prepare("UPDATE email_tokens SET used = 1 WHERE token_id = ?")->execute([$row['token_id']]);
+      $status = 'success';
+    }
   }
 }
 
@@ -86,6 +91,7 @@ $connected = isset($_SESSION['user_id']);
       <?php endif; ?>
 
       <form method="post" action="reset_password.php?token=<?= urlencode($token) ?>" class="reset-form">
+        <?= fh_csrf_field() ?>
         <input type="password" name="new_pass" placeholder="Nouveau mot de passe (min. 6 caractères)" required
           autocomplete="new-password">
         <input type="password" name="confirm_pass" placeholder="Confirmer le mot de passe" required

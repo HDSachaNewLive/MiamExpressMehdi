@@ -2,6 +2,7 @@
 // edit_comment.php
 session_start();
 require_once 'db/config.php';
+require_once 'csrf_helper.php';
 
 if (!isset($_SESSION['user_id'])) {
     if (isset($_POST['ajax_edit_comment'])) {
@@ -16,6 +17,17 @@ $uid      = (int)$_SESSION['user_id'];
 $is_ajax  = isset($_POST['ajax_edit_comment']);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Vérification CSRF
+    if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+        if ($is_ajax) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['success' => false, 'error' => 'Jeton CSRF invalide.']);
+            exit;
+        }
+        $_SESSION['message'] = 'Jeton CSRF invalide.';
+        header('Location: ' . ($restaurant_id > 0 ? "menu.php?restaurant_id=$restaurant_id" : 'restaurants.php'));
+        exit;
+    }
     $comment_id    = (int)($_POST['comment_id']    ?? 0);
     $restaurant_id = (int)($_POST['restaurant_id'] ?? 0);
     $new_comment   = trim($_POST['new_comment']    ?? '');

@@ -2,6 +2,7 @@
 // suivi_commande.php
 session_start();
 require_once 'db/config.php';
+require_once __DIR__ . '/csrf_helper.php';
 
 if (!isset($_SESSION['user_id'])) {
   header('Location: login.php');
@@ -13,7 +14,11 @@ $commande_id = (int)($_GET['commande_id'] ?? 0);
 
 // Annulation
 if (isset($_POST['annuler_commande'])) {
-  $cancel_id = (int)$_POST['commande_id'];
+  $cancel_id = (int)($_POST['commande_id'] ?? 0);
+  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+    header("Location: suivi_commande.php?commande_id=$cancel_id");
+    exit;
+  }
   $stmt = $conn->prepare("UPDATE commandes SET statut = 'annulee' WHERE commande_id = ? AND user_id = ? AND statut NOT IN ('livree','annulee')");
   $stmt->execute([$cancel_id, $uid]);
   header("Location: suivi_commande.php?commande_id=$cancel_id");
@@ -307,6 +312,7 @@ else {
       <?php if (!in_array(strtolower($cmd['statut']), ['livree', 'annulee'])): ?>
         <form method="post" onsubmit="return confirm('Tu veux vraiment annuler cette commande ? 😢');">
           <input type="hidden" name="commande_id" value="<?= $cmd['commande_id'] ?>">
+          <?= fh_csrf_field() ?>
           <?php if ($cmd['statut'] === 'en_preparation' || $cmd['statut'] === 'en_attente'):?>
           <button type="submit" name="annuler_commande" class="btn btn-cancel">Annuler la commande</button>
           <?php endif; ?>
@@ -372,10 +378,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
       setTimeout(async () => {
         try {
+          const csrfEl = document.querySelector('input[name="csrf_token"]');
+          const csrfSuffix = csrfEl ? '&csrf_token=' + encodeURIComponent(csrfEl.value) : '';
           const resp = await fetch('update_order_status.php', {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: 'commande_id=' + encodeURIComponent(commandeId)
+            body: 'commande_id=' + encodeURIComponent(commandeId) + csrfSuffix
           });
           const data = await resp.json();
           if (data.success) {

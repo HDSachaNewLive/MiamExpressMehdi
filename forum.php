@@ -6,45 +6,51 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 require_once 'db/config.php';
+require_once __DIR__ . '/csrf_helper.php';
+require_once __DIR__ . '/auth_helper.php';
 
 $connected = isset($_SESSION['user_id']);
 $uid = $connected ? (int)$_SESSION['user_id'] : 0;
-$is_admin = ($uid === 1);
+$is_admin = fh_is_admin($conn);
 
 $message = '';
 $error = '';
 
 // Création d'un nouveau sujet
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_topic']) && $connected) {
+  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+    $error = 'Jeton CSRF invalide.';
+  } else {
     $titre = trim($_POST['titre'] ?? '');
     $contenu = trim($_POST['contenu'] ?? '');
     $categorie = in_array($_POST['categorie'] ?? '', ['restaurants', 'recettes', 'conseils', 'general']) 
-                 ? $_POST['categorie'] : 'general';
-    
+           ? $_POST['categorie'] : 'general';
+        
     if (empty($titre) || empty($contenu)) {
-        $error = "Le titre et le message sont requis.";
+      $error = "Le titre et le message sont requis.";
     } else {
-        try {
-            $conn->beginTransaction();
-            
-            $stmt = $conn->prepare("INSERT INTO forum_topics (user_id, titre, categorie) VALUES (?, ?, ?)");
-            $stmt->execute([$uid, $titre, $categorie]);
-            $topic_id = $conn->lastInsertId();
-            
-            $stmt = $conn->prepare("INSERT INTO forum_messages (topic_id, user_id, contenu) VALUES (?, ?, ?)");
-            $stmt->execute([$topic_id, $uid, $contenu]);
-            
-            $conn->prepare("UPDATE forum_topics SET nb_reponses = 1 WHERE topic_id = ?")->execute([$topic_id]);
-            
-            $conn->commit();
-            $message = "✅ Sujet créé avec succès !";
-            header("Location: forum_topic.php?topic_id=$topic_id");
-            exit;
-        } catch (Exception $e) {
-            $conn->rollBack();
-            $error = "❌ Erreur lors de la création du sujet.";
-        }
+      try {
+        $conn->beginTransaction();
+                
+        $stmt = $conn->prepare("INSERT INTO forum_topics (user_id, titre, categorie) VALUES (?, ?, ?)");
+        $stmt->execute([$uid, $titre, $categorie]);
+        $topic_id = $conn->lastInsertId();
+                
+        $stmt = $conn->prepare("INSERT INTO forum_messages (topic_id, user_id, contenu) VALUES (?, ?, ?)");
+        $stmt->execute([$topic_id, $uid, $contenu]);
+                
+        $conn->prepare("UPDATE forum_topics SET nb_reponses = 1 WHERE topic_id = ?")->execute([$topic_id]);
+                
+        $conn->commit();
+        $message = "✅ Sujet créé avec succès !";
+        header("Location: forum_topic.php?topic_id=$topic_id");
+        exit;
+      } catch (Exception $e) {
+        $conn->rollBack();
+        $error = "❌ Erreur lors de la création du sujet.";
+      }
     }
+  }
 }
 
 // Récupération des sujets, ft=forum_topic
@@ -135,6 +141,7 @@ $stats = $conn->query("
       <div id="create-topic-form" style="display: none;">
         <form method="post" class="topic-form">
           <input type="hidden" name="create_topic" value="1">
+          <?= fh_csrf_field() ?>
           
           <label>Titre du sujet :</label>
           <input type="text" name="titre" required placeholder="Ex: Meilleur kebab de Paris ?">

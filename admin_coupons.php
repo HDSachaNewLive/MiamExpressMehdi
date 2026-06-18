@@ -1,16 +1,20 @@
 <?php
 session_start();
 require_once 'db/config.php';
+require_once __DIR__ . '/auth_helper.php';
+fh_require_admin($conn);
+require_once __DIR__ . '/csrf_helper.php';
 
-/* Vérification admin */
-if (!isset($_SESSION['user_id']) || $_SESSION['user_id'] != 1) {
-    header("Location: index.php");
-    exit;
-}
-
-/* Suppression d'un coupon */
-if (isset($_GET['delete'])) {
-    $id = (int) $_GET['delete'];
+/* Suppression d'un coupon (POST + CSRF) */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_coupon'])) {
+    if (!isset($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+        $_SESSION['deleted_message'] = false;
+        $_SESSION['created_message'] = false;
+        $_SESSION['admin_error'] = 'Jeton CSRF invalide.';
+        header("Location: admin_coupons.php");
+        exit;
+    }
+    $id = (int) $_POST['delete_coupon'];
     $stmt = $conn->prepare("DELETE FROM coupons WHERE coupon_id = ?");
     $stmt->execute([$id]);
     // Utiliser une session pour stocker le message
@@ -24,6 +28,15 @@ $message = "";
 $error = "";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Vérification CSRF pour création (si ce n'est pas une suppression déjà gérée)
+    if (!isset($_POST['delete_coupon'])) {
+        if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+            $_SESSION['created_message'] = false;
+            $_SESSION['admin_error'] = 'Jeton CSRF invalide.';
+            header("Location: admin_coupons.php");
+            exit;
+        }
+    }
     $code = trim($_POST['code']);
     $type = $_POST['type'];
     $valeur = $_POST['valeur'];
@@ -57,7 +70,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($e->getCode() == 23000) {
             $error = "❌ Ce code existe déjà.";
         } else {
-            $error = "❌ Erreur : " . $e->getMessage();
+            error_log('[admin_coupons] Erreur création coupon: ' . $e->getMessage());
+            $error = "❌ Erreur serveur. Consulte les logs.";
         }
     }
 }
@@ -113,6 +127,7 @@ if ($error && $_SERVER['REQUEST_METHOD'] !== 'POST') {
         <h3>Créer un nouveau coupon</h3>
 
         <form method="POST">
+            <?= fh_csrf_field() ?>
 
             <label>Code du coupon :</label>
             <input type="text" name="code" required placeholder="ex: PROMO10">
@@ -199,9 +214,11 @@ if ($error && $_SERVER['REQUEST_METHOD'] !== 'POST') {
                     <?php endif; ?>
                 </td>
                 <td>
-                    <a class="delete" href="?delete=<?= $c['coupon_id'] ?>" onclick="return confirm('Supprimer ce coupon ?');">
-                        Supprimer
-                    </a>
+                    <form method="POST" style="display:inline;" onsubmit="return confirm('Supprimer ce coupon ?');">
+                        <input type="hidden" name="delete_coupon" value="<?= $c['coupon_id'] ?>">
+                        <?= fh_csrf_field() ?>
+                        <button class="delete" type="submit">Supprimer</button>
+                    </form>
                 </td>
             </tr>
             <?php endforeach; ?>

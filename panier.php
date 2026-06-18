@@ -2,6 +2,7 @@
 // panier.php
 session_start();
 require_once 'db/config.php';
+require_once __DIR__ . '/csrf_helper.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
@@ -18,6 +19,7 @@ $eligible_total = 0;
 
 // Ajouter / mise à jour du panier
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['plat_id']) && !isset($_POST['supprimer_panier_id'])) {
+  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) { header("Location: panier.php"); exit; }
     $plat_id = (int)$_POST['plat_id'];
     $quantite = max(1, (int)$_POST['quantite']);
     $stmt = $conn->prepare("SELECT panier_id, quantite FROM panier WHERE user_id=? AND plat_id=?");
@@ -37,20 +39,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['plat_id']) && !isset(
 
 // Supprimer un article
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['supprimer_panier_id'])) {
-    $panier_id = (int)$_POST['supprimer_panier_id'];
-    $stmt = $conn->prepare("DELETE FROM panier WHERE panier_id = ? AND user_id = ?");
-    $stmt->execute([$panier_id, $user_id]);
-    header("Location: panier.php");
-    exit;
+  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) { header("Location: panier.php"); exit; }
+  $panier_id = (int)$_POST['supprimer_panier_id'];
+  $stmt = $conn->prepare("DELETE FROM panier WHERE panier_id = ? AND user_id = ?");
+  $stmt->execute([$panier_id, $user_id]);
+  header("Location: panier.php");
+  exit;
 }
 
 // Vider le panier
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['vider_panier'])) {
-    $stmt = $conn->prepare("DELETE FROM panier WHERE user_id = ?");
-    $stmt->execute([$user_id]);
-    $message = "🗑️ Panier vidé avec succès !";
-    header("Location: panier.php");
-    exit;
+  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) { header("Location: panier.php"); exit; }
+  $stmt = $conn->prepare("DELETE FROM panier WHERE user_id = ?");
+  $stmt->execute([$user_id]);
+  $message = "🗑️ Panier vidé avec succès !";
+  header("Location: panier.php");
+  exit;
 }
 
 // Récupérer items AVANT de traiter le coupon
@@ -66,6 +70,7 @@ $items = $stmt->fetchAll();
 
 // Appliquer un coupon
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['apply_coupon'])) {
+  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) { header("Location: panier.php"); exit; }
     $code = trim($_POST['coupon_code']);
     
     if (empty($code)) {
@@ -93,9 +98,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['apply_coupon'])) {
 
 // Retirer le coupon
 if (isset($_POST['remove_coupon'])) {
-    unset($_SESSION['coupon']);
-    header("Location: panier.php");
-    exit;
+  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) { header("Location: panier.php"); exit; }
+  unset($_SESSION['coupon']);
+  header("Location: panier.php");
+  exit;
 }
 
 // Récupérer le coupon de la session
@@ -199,6 +205,7 @@ $adresse_pref = $user['adresse_livraison'] ?? '';
             <td>
               <form method="post" style="display:inline;">
                 <input type="hidden" name="supprimer_panier_id" value="<?= (int)$it['panier_id'] ?>">
+                <?= fh_csrf_field() ?>
                 <button class="btn-del" type="submit">Supprimer</button>
               </form>
             </td>
@@ -208,6 +215,7 @@ $adresse_pref = $user['adresse_livraison'] ?? '';
       <!-- bouton vider la panier -->
       <div style="margin-top: 1rem; text-align: left;">
         <form method="post" onsubmit="return confirm('⚠️ Êtes-vous sûr de vouloir vider votre panier ? Cette action est irréversible.');">
+        <?= fh_csrf_field() ?>
         <button type="submit" name="vider_panier" class="btn-clear-cart">🗑️ Vider le panier</button>
         </form>
       </div>
@@ -222,6 +230,7 @@ $adresse_pref = $user['adresse_livraison'] ?? '';
               -<?= $coupon_applied['type'] === 'pourcentage' ? $coupon_applied['valeur'] . '%' : number_format($coupon_applied['valeur'], 2) . ' €' ?>
             </span>
             <form method="post" style="display:inline;">
+              <?= fh_csrf_field() ?>
               <button type="submit" name="remove_coupon" class="btn-remove-coupon">❌ Retirer</button>
             </form>
           </div>
@@ -236,6 +245,7 @@ $adresse_pref = $user['adresse_livraison'] ?? '';
           <?php endif; ?>
         <?php else: ?>
           <form method="post" class="coupon-form" id="coupon-form">
+            <?= fh_csrf_field() ?>
             <input type="text" name="coupon_code" placeholder="Entrez votre code" class="coupon-input" id="coupon-input">
             <button type="submit" name="apply_coupon" class="btn-apply-coupon">Appliquer</button>
           </form>
@@ -261,6 +271,7 @@ $adresse_pref = $user['adresse_livraison'] ?? '';
       <h4>Adresse de livraison</h4>
       <form method="post" action="checkout.php" id="checkout-form">
         <input type="hidden" name="from_cart" value="1">
+        <?= fh_csrf_field() ?>
         <input type="text" name="adresse_livraison" value="<?= htmlspecialchars($adresse_pref) ?>" placeholder="Adresse de livraison (modifiable)" data-address-autocomplete>
         
         <br> <!-- Saut de ligne -->
@@ -588,10 +599,13 @@ let validationEnCours = false;
 let soumissionDirecte = false;
 
 async function updateQuantite(panierId, quantite) {
+  const csrfEl = document.querySelector('input[name="csrf_token"]');
+  const csrfVal = csrfEl ? encodeURIComponent(csrfEl.value) : '';
+  const bodyStr = `panier_id=${encodeURIComponent(panierId)}&quantite=${encodeURIComponent(quantite)}` + (csrfVal ? `&csrf_token=${csrfVal}` : '');
   const response = await fetch('update_panier.php', {
     method: 'POST',
     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-    body: `panier_id=${panierId}&quantite=${quantite}`
+    body: bodyStr
   });
   if (!response.ok) throw new Error('Erreur mise à jour panier');
 }

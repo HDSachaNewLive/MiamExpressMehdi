@@ -1,0 +1,21 @@
+# Empêcher l'exécution de scripts dans le dossier uploads
+# Désactiver l'exécution de PHP (si autorisé par la configuration Apache)
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag engine off
+</IfModule>
+
+Options -Indexes
+
+# Bloquer les fichiers PHP et similaires
+<FilesMatch "\.(php|phtml|php3|php4|php5|php7|phar)$">
+    Require all denied
+</FilesMatch>
+
+# En complément : retirer tout handler PHP possible
+RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .phar
+
+# Forcer type texte pour éviter exécution accidentelle
+AddType text/plain .php

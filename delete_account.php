@@ -13,6 +13,12 @@ if (!isset($_SESSION['user_id'])) {
 $uid = (int)$_SESSION['user_id'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_once 'csrf_helper.php';
+    if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+        $_SESSION['delete_error'] = 'Jeton CSRF invalide.';
+        header('Location: profile.php');
+        exit;
+    }
     try {
         fh_delete_user($conn, $uid, $_SESSION['google_token'] ?? null);
 
@@ -23,7 +29,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
 
     } catch (Exception $e) {
-        die("Erreur lors de la suppression du compte : " . htmlspecialchars($e->getMessage()));
+        error_log('[delete_account] Erreur suppression compte ' . $uid . ' : ' . $e->getMessage());
+        $_SESSION['delete_error'] = 'Erreur serveur lors de la suppression du compte. Contacte l\'administrateur.';
+        header('Location: profile.php');
+        exit;
     }
 }
 

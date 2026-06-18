@@ -2,6 +2,7 @@
 // paiement_simule.php
 session_start();
 require_once 'db/config.php';
+require_once __DIR__ . '/csrf_helper.php';
 if (!isset($_SESSION['user_id'])) { header('Location: login.php'); exit; }
 $uid = (int)$_SESSION['user_id'];
 $commande_id = (int)($_GET['commande_id'] ?? 0);
@@ -39,6 +40,7 @@ foreach ($items as $it) {
 
 // Changer statut commande
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) { header('Location: paiement_simule.php?commande_id=' . $commande_id); exit; }
   $conn->prepare("UPDATE commandes SET statut = 'en_preparation', date_paiement = NOW() WHERE commande_id = ?")->execute([$commande_id]);
   header("Location: suivi_commande.php?commande_id=".$commande_id);
   exit;
@@ -253,6 +255,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </div>
 
   <form method="post">
+    <?= fh_csrf_field() ?>
     <button class="btn" type="submit">💸 Confirmer le paiement</button>
   </form>
 

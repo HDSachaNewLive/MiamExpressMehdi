@@ -1,6 +1,7 @@
 <?php
 require "db/config.php";
-session_start();
+require_once __DIR__ . '/csrf_helper.php';
+require_once __DIR__ . '/auth_helper.php';
 
 if (!isset($_SESSION["user_id"])) {
   header("Location: login.php");
@@ -9,10 +10,16 @@ if (!isset($_SESSION["user_id"])) {
 
 $user_id = (int) $_SESSION["user_id"];
 
-$is_owner = ($user_id === 1);
+$is_owner = fh_is_admin($conn);
 $siteOwnerId = 1;
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+
+  // Vérification CSRF pour toutes les actions POST
+  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+    header("Location: notifications.php");
+    exit();
+  }
 
   if (isset($_POST["delete_notif_id"])) {
     $nid = (int) $_POST["delete_notif_id"];
@@ -309,6 +316,7 @@ $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
               <?php endif; ?>
               <form method="post" style="margin:0;" onsubmit="return confirm('Supprimer cette notification ?');">
                 <input type="hidden" name="delete_notif_id" value="<?= (int) $n["notif_id"] ?>">
+                <?= fh_csrf_field() ?>
                 <button type="submit" class="btn btn-delete">❌ Supprimer</button>
               </form>
             </div>
@@ -366,6 +374,7 @@ $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
           echo "<div class='notif-actions'>";
           echo "<form method='post' style='margin:0; display:flex; gap:10px;'>";
           echo "<input type='hidden' name='verify_id' value='{$rid}'>";
+            echo fh_csrf_field();
           echo "<button class='btn' name='action' value='accept'>✅ Accepter</button>";
           echo "<button class='btn btn-delete' name='action' value='refuse'>❌ Refuser</button>";
           echo "</form></div>";
@@ -418,6 +427,7 @@ $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
           echo "<a class='btn' href='admin_messages.php' style='background:linear-gradient(135deg,#ff4757,#c0392b);'>⚙️ Gérer</a>";
           echo "<form method='post' style='margin:0;' onsubmit='return confirm(\"Ignorer ce signalement ?\")'>";
           echo "<input type='hidden' name='ignorer_signalement_id' value='" . (int)$sig['message_id'] . "'>";
+            echo fh_csrf_field();
           echo "<button type='submit' class='btn' style='background:rgba(180,180,180,0.55);color:#333;font-weight:600;'>✕ Ignorer</button>";          
           echo "</form></div>";
           echo "</div>";

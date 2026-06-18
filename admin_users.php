@@ -4,11 +4,10 @@ session_start();
 require_once 'db/config.php';
 require_once 'mail_helper.php';
 require_once 'delete_user_helper.php';
-/* Vérification admin */
-if (!isset($_SESSION['user_id']) || $_SESSION['user_id'] != 1) {
-    header("Location: index.php");
-    exit;
-}
+/* Vérification admin (centralisée) */
+require_once __DIR__ . '/auth_helper.php';
+fh_require_admin($conn);
+require_once __DIR__ . '/csrf_helper.php';
 
 $message = "";
 $error = "";
@@ -25,13 +24,44 @@ if (isset($_SESSION['admin_error'])) {
 
 // Traitement des actions admin
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+        $_SESSION['admin_error'] = 'Jeton CSRF invalide.';
+        header('Location: admin_users.php');
+        exit;
+    }
     $target_user_id = (int)($_POST['target_user_id'] ?? 0);
     $action = $_POST['action'] ?? '';
     $raison = trim($_POST['raison'] ?? '');
 
-    if ($target_user_id == 1) {
-        $_SESSION['admin_error'] = "❌ Impossible de modifier le compte administrateur principal.";
-    } else if ($target_user_id > 0 && $action) {
+    if ($target_user_id <= 0) {
+        $_SESSION['admin_error'] = "❌ Paramètres invalides.";
+        header('Location: admin_users.php');
+        exit;
+    }
+
+    // Récupérer les informations de l'utilisateur ciblé
+    $stmt_target = $conn->prepare("SELECT user_id, type_compte, role, compte_actif FROM users WHERE user_id = ? LIMIT 1");
+    $stmt_target->execute([$target_user_id]);
+    $target_user = $stmt_target->fetch(PDO::FETCH_ASSOC);
+    if (!$target_user) {
+        $_SESSION['admin_error'] = "❌ Utilisateur introuvable.";
+        header('Location: admin_users.php');
+        exit;
+    }
+
+    $target_is_admin = ($target_user['type_compte'] === 'admin') || (!empty($target_user['role']) && $target_user['role'] === 'admin');
+    if ($target_is_admin) {
+        $stmt_count = $conn->prepare("SELECT COUNT(*) FROM users WHERE (type_compte = 'admin' OR role = 'admin') AND compte_actif = 1");
+        $stmt_count->execute();
+        $admin_count = (int)$stmt_count->fetchColumn();
+        if ($admin_count <= 1) {
+            $_SESSION['admin_error'] = "❌ Impossible de modifier/supprimer le dernier compte administrateur.";
+            header('Location: admin_users.php');
+            exit;
+        }
+    }
+
+    if ($target_user_id > 0 && $action) {
         try {
             $conn->beginTransaction();
 
@@ -54,14 +84,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['admin_message'] = "🗑️ Compte supprimé avec succès.";
                     // Enregistrer l'action dans l'historique (hors transaction déjà commitée)
                     $stmt = $conn->prepare("INSERT INTO admin_actions (admin_id, target_user_id, action_type, raison) VALUES (?, ?, ?, ?)");
-                    $stmt->execute([1, $target_user_id, $action, $raison]);
+                    $stmt->execute([(int)fh_current_user_id(), $target_user_id, $action, $raison]);
                     header("Location: admin_users.php");
                     exit;
             }
 
             // Enregistrer l'action dans l'historique (pour desactiver/activer)
             $stmt = $conn->prepare("INSERT INTO admin_actions (admin_id, target_user_id, action_type, raison) VALUES (?, ?, ?, ?)");
-            $stmt->execute([1, $target_user_id, $action, $raison]);
+            $stmt->execute([(int)fh_current_user_id(), $target_user_id, $action, $raison]);
 
             $conn->commit();
 
@@ -70,9 +100,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         } catch (Exception $e) {
             if ($conn->inTransaction()) {
-                $conn->rollBack();
-            }
-            $_SESSION['admin_error'] = "❌ Erreur : " . $e->getMessage();
+                    $conn->rollBack();
+                }
+                error_log('[admin_users] Erreur transaction admin action: ' . $e->getMessage());
+                $_SESSION['admin_error'] = "❌ Erreur serveur. Contacte l'administrateur.";
             header("Location: admin_users.php");
             exit;
         }
@@ -164,7 +195,8 @@ $historique = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </h4>
                         
                         <div class="user-badges">
-                            <?php if ($u['user_id'] == 1): ?>
+                            <?php $isAdminBadge = ($u['type_compte'] === 'admin') || (!empty($u['role']) && $u['role'] === 'admin'); ?>
+                            <?php if ($isAdminBadge): ?>
                                 <span class="badge admin">⚙️ Admin</span>
                             <?php else: ?>
                                 <span class="badge <?= $u['type_compte'] ?>">
@@ -264,6 +296,7 @@ $historique = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <form method="POST" id="actionForm">
             <input type="hidden" name="target_user_id" id="targetUserId">
             <input type="hidden" name="action" id="actionType">
+            <?= fh_csrf_field() ?>
             
             <label for="raison">Raison (optionnelle) :</label>
             <textarea name="raison" id="raison" rows="3" 

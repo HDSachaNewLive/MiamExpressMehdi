@@ -189,8 +189,8 @@ try {
 
 } catch (PDOException $e) {
     // En cas d'erreur BDD colonnes google_id / google_photo manquantes
-    $_SESSION['error_login'] = "❌ Erreur serveur : " . htmlspecialchars($e->getMessage())
-                              . "\n— Avez-vous bien exécuté la migration SQL ?";
+    error_log('[google_callback] Erreur PDO: ' . $e->getMessage());
+    $_SESSION['error_login'] = "❌ Erreur serveur lors de la connexion Google. Vérifie la migration SQL et les logs.";
     header('Location: login.php');
     exit;
 }
@@ -203,6 +203,9 @@ function _set_session(array $user): void {
     $_SESSION['type_compte'] = $user['type_compte'];
     $_SESSION['adresse_livraison'] = $user['adresse_livraison'] ?? '';
     $_SESSION['google_connected'] = true;
+    if (function_exists('session_regenerate_id')) {
+        session_regenerate_id(true);
+    }
 }
 
 function _set_welcome_flags(array $user): void {

@@ -3,6 +3,7 @@
 session_start();
 require_once 'db/config.php';
 require_once 'mail_helper.php';
+require_once __DIR__ . '/csrf_helper.php';
 
 if (isset($_SESSION["user_id"])) {
     header("Location: home.php");
@@ -16,7 +17,10 @@ $is_first_install = ($nb_users == 0);
 
 $errors = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nom               = trim($_POST['nom'] ?? '');
+  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+    $errors[] = 'Jeton CSRF invalide.';
+  }
+  $nom               = trim($_POST['nom'] ?? '');
     $email             = trim($_POST['email'] ?? '');
     $telephone         = trim($_POST['telephone'] ?? '');
     $motdepasse        = $_POST['motdepasse'] ?? '';
@@ -58,6 +62,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['type_compte']       = $type_compte;
             $_SESSION['adresse_livraison'] = $adresse_livraison;
             $_SESSION['nouveau_compte']    = true; // déclenchera l'animation de bienvenue dans home.php
+            // Renouveler l'ID de session après inscription/authentification
+            if (function_exists('session_regenerate_id')) {
+              session_regenerate_id(true);
+            }
 
             if (!$email_fictif) {
                 // Envoyer l'email de vérification
@@ -134,6 +142,7 @@ unset($_SESSION['error_login']);
     </div>
 
     <form method="post" action="register.php" class="form">
+      <?= fh_csrf_field() ?>
       <input type="text" name="nom" maxlength="45" placeholder="Nom complet (max 45 caractères, espaces compris)" required value="<?= htmlspecialchars($_POST['nom'] ?? '') ?>"><br>
       <input type="email" name="email" placeholder="Email" required value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"><br>
       <input type="text" name="telephone" placeholder="Téléphone (optionnel)" value="<?= htmlspecialchars($_POST['telephone'] ?? '') ?>"><br>

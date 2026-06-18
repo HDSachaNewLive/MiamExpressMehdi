@@ -4,16 +4,28 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 $servername = "mysql-foodhub-sio.alwaysdata.net";
 $username = "foodhub-sio";
-$password = $_ENV['DB_PASS'];
+$password = getenv('DB_PASS');
 $dbname = "foodhub-sio_db";
  
 try {
     $conn = new PDO("mysql:host=$servername;dbname=$dbname;charset=utf8mb4", $username, $password);
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-    //Vérification compte désactivé
-    
+} catch(PDOException $e) {
+    error_log("[FoodHub] Connexion BDD échouée : " . $e->getMessage());
+    // En CLI (cron), pas de http_response_code ni de die HTML
+    if (PHP_SAPI === 'cli') {
+        fwrite(STDERR, "[FoodHub] Connexion BDD échouée : " . $e->getMessage() . "\n");
+        exit(1);
+    }
+    http_response_code(503);
+    die("🍽️ FoodHub est momentanément indisponible. Réessayez dans quelques instants.");
+}
+
+// Logique web uniquement (ignorée en CLI/cron)
+if (PHP_SAPI !== 'cli') {
     require_once __DIR__ . '/../not_found_helper.php';
+    //Vérification compte désactivé
     //Pages qui ont PAS besoin de cette vérification
     $page_actuelle = basename($_SERVER['PHP_SELF']);
     $pages_exclues = [
@@ -35,27 +47,23 @@ try {
             exit;
         }
     }
-} catch(PDOException $e) {
-    error_log("[FoodHub] Connexion BDD échouée : " . $e->getMessage());
-    http_response_code(503);
-    die("🍽️ FoodHub est momentanément indisponible. Réessayez dans quelques instants.");
-}
 
-// Tracking sessions compteur
-if (session_status() === PHP_SESSION_ACTIVE && isset($_SESSION['user_id'])) {
-    try {
-        $conn->prepare("
-            INSERT INTO sessions_actives (session_id, user_id, derniere_activite)
-            VALUES (?, ?, NOW())
-            ON DUPLICATE KEY UPDATE user_id = VALUES(user_id), derniere_activite = NOW()
-        ")->execute([session_id(), (int)$_SESSION['user_id']]);
+    // Tracking sessions compteur
+    if (session_status() === PHP_SESSION_ACTIVE && isset($_SESSION['user_id'])) {
+        try {
+            $conn->prepare("
+                INSERT INTO sessions_actives (session_id, user_id, derniere_activite)
+                VALUES (?, ?, NOW())
+                ON DUPLICATE KEY UPDATE user_id = VALUES(user_id), derniere_activite = NOW()
+            ")->execute([session_id(), (int)$_SESSION['user_id']]);
 
-        // Nettoyage des sessions inactives 1 fois sur 10
-        if (rand(1, 10) === 1) {
-            $conn->exec("DELETE FROM sessions_actives WHERE derniere_activite < (NOW() - INTERVAL 5 MINUTE)");
+            // Nettoyage des sessions inactives 1 fois sur 10
+            if (rand(1, 10) === 1) {
+                $conn->exec("DELETE FROM sessions_actives WHERE derniere_activite < (NOW() - INTERVAL 5 MINUTE)");
+            }
+        } catch (PDOException $e) {
+            // si la table existe pas encore, ça casse rien
         }
-    } catch (PDOException $e) {
-        // si la table existe pas encore, ça casse rien
     }
 }
 ?>

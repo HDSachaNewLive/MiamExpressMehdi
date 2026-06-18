@@ -5,6 +5,7 @@
 
 session_start();
 require_once 'db/config.php';
+require_once __DIR__ . '/csrf_helper.php';
 
 // Doit être connecté ET venir d'une création Google
 if (!isset($_SESSION['user_id']) || empty($_SESSION['google_new_account'])) {
@@ -24,8 +25,11 @@ $errors = [];
 $msg = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $type_compte = in_array($_POST['type_compte'] ?? 'client', ['client', 'proprietaire'])
-                         ? $_POST['type_compte'] : 'client';
+  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+    $errors[] = 'Jeton CSRF invalide.';
+  } else {
+  $type_compte = in_array($_POST['type_compte'] ?? 'client', ['client', 'proprietaire'])
+             ? $_POST['type_compte'] : 'client';
     $telephone = trim($_POST['telephone'] ?? '');
     $adresse_livraison = trim($_POST['adresse_livraison'] ?? '');
     $motdepasse = $_POST['motdepasse'] ?? '';
@@ -68,8 +72,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['success'] = "✅ Profil complété avec succès ! Bienvenue sur FoodHub 🎉";
         header('Location: tos.php');
         exit;
+      }
+      }
     }
-}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -96,6 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php endif; ?>
 
     <form method="post" class="form">
+      <?= fh_csrf_field() ?>
 
       <label>Type de compte :</label>
       <select name="type_compte" required>

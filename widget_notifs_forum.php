@@ -184,6 +184,8 @@ if (isset($_SESSION['user_id']) && isset($conn)) {
         window.marquer_notif_lue = function (topic_id) {
             const fd = new FormData();
             fd.append('topic_id', topic_id);
+            const csrfEl = document.querySelector('input[name="csrf_token"]');
+            if (csrfEl) fd.append('csrf_token', csrfEl.value);
             fetch('marquer_notifs_forum_lues.php', { method: 'POST', body: fd }).catch(() => { });
             document.querySelectorAll(`.notif-forum-item[href="forum_topic.php?topic_id=${topic_id}"]`)
                 .forEach(el => el.classList.remove('notif-forum-non-lue'));
