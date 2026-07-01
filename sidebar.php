@@ -76,6 +76,7 @@ if (isset($_SESSION['user_id'])) {
     
   <?php if (isset($_SESSION['user_id'])): ?>
     <a id="nte" href="media_player.php">💿 NTE OST</a>
+    <a id="smash" href="stream_smash.php">⚔️ Smash en direct</a>
     <a href="mes_favoris.php">❤️ Mes Favoris</a>
     <a href="forum.php" class="notif-link">
         💬 Discussion

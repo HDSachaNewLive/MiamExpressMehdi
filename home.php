@@ -2336,9 +2336,6 @@ window.initHomeVanta = function () {
   });
 };
 </script>
-<script src="assets/js/welcome_animation.js"></script>
-<?php if (!$show_welcome): ?>
 <script>window.initHomeVanta();</script>
-<?php endif; ?>
 </body>
 </html>

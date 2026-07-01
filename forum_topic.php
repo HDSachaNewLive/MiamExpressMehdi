@@ -523,7 +523,7 @@ $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
               <input type="hidden" name="reply" value="1">
               <?= fh_csrf_field() ?>
               <input type="hidden" name="parent_id" id="reply-parent-id" value="">
-              <textarea name="contenu" id="reply-content" placeholder="Écris un message..."></textarea>
+              <textarea maxlength="2000" name="contenu" id="reply-content" placeholder="Écris un message... (max 2000 caractères)"></textarea>
               <button type="submit" class="btn-send">Envoyer</button>
             </form>
           </div>
