@@ -8,7 +8,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 $uid = (int)$_SESSION['user_id'];
 
-// Vérifier propriétaire
+// Vérifier si on est propriétaire
 $stmt = $conn->prepare("SELECT type_compte FROM users WHERE user_id = ?");
 $stmt->execute([$uid]);
 $user = $stmt->fetch();
