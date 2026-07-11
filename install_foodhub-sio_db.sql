@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: mysql-foodhub-sio.alwaysdata.net
--- Generation Time: Jun 05, 2026 at 01:43 PM
+-- Generation Time: Jul 11, 2026 at 04:34 PM
 -- Server version: 11.4.12-MariaDB
 -- PHP Version: 8.4.21
 
@@ -29,6 +29,7 @@ USE `foodhub-sio_db`;
 -- Table structure for table `admin_actions`
 --
 
+DROP TABLE IF EXISTS `admin_actions`;
 CREATE TABLE `admin_actions` (
   `action_id` int(11) NOT NULL,
   `admin_id` int(11) NOT NULL,
@@ -44,6 +45,7 @@ CREATE TABLE `admin_actions` (
 -- Table structure for table `annonces`
 --
 
+DROP TABLE IF EXISTS `annonces`;
 CREATE TABLE `annonces` (
   `annonce_id` int(11) NOT NULL,
   `titre` varchar(255) NOT NULL,
@@ -60,6 +62,7 @@ CREATE TABLE `annonces` (
 -- Table structure for table `avis`
 --
 
+DROP TABLE IF EXISTS `avis`;
 CREATE TABLE `avis` (
   `avis_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -79,6 +82,7 @@ CREATE TABLE `avis` (
 -- Table structure for table `avis_votes`
 --
 
+DROP TABLE IF EXISTS `avis_votes`;
 CREATE TABLE `avis_votes` (
   `vote_id` int(11) NOT NULL,
   `avis_id` int(11) NOT NULL,
@@ -93,6 +97,7 @@ CREATE TABLE `avis_votes` (
 -- Table structure for table `bridge_messages`
 --
 
+DROP TABLE IF EXISTS `bridge_messages`;
 CREATE TABLE `bridge_messages` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `direction` enum('in','out') NOT NULL DEFAULT 'in',
@@ -112,6 +117,7 @@ CREATE TABLE `bridge_messages` (
 -- Table structure for table `captcha_logs`
 --
 
+DROP TABLE IF EXISTS `captcha_logs`;
 CREATE TABLE `captcha_logs` (
   `log_id` int(11) NOT NULL,
   `ip` varchar(50) NOT NULL,
@@ -125,6 +131,7 @@ CREATE TABLE `captcha_logs` (
 -- Table structure for table `commandes`
 --
 
+DROP TABLE IF EXISTS `commandes`;
 CREATE TABLE `commandes` (
   `commande_id` int(11) NOT NULL,
   `numero_utilisateur` int(11) DEFAULT NULL,
@@ -144,6 +151,7 @@ CREATE TABLE `commandes` (
 -- Table structure for table `commande_plats`
 --
 
+DROP TABLE IF EXISTS `commande_plats`;
 CREATE TABLE `commande_plats` (
   `commande_id` int(11) NOT NULL,
   `plat_id` int(11) NOT NULL,
@@ -157,6 +165,7 @@ CREATE TABLE `commande_plats` (
 -- Table structure for table `coupons`
 --
 
+DROP TABLE IF EXISTS `coupons`;
 CREATE TABLE `coupons` (
   `coupon_id` int(11) NOT NULL,
   `code_reduction` varchar(50) NOT NULL,
@@ -176,6 +185,7 @@ CREATE TABLE `coupons` (
 -- Table structure for table `email_tokens`
 --
 
+DROP TABLE IF EXISTS `email_tokens`;
 CREATE TABLE `email_tokens` (
   `token_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -193,6 +203,7 @@ CREATE TABLE `email_tokens` (
 -- Table structure for table `favoris`
 --
 
+DROP TABLE IF EXISTS `favoris`;
 CREATE TABLE `favoris` (
   `favori_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -206,6 +217,7 @@ CREATE TABLE `favoris` (
 -- Table structure for table `forum_messages`
 --
 
+DROP TABLE IF EXISTS `forum_messages`;
 CREATE TABLE `forum_messages` (
   `message_id` int(11) NOT NULL,
   `topic_id` int(11) NOT NULL,
@@ -224,6 +236,7 @@ CREATE TABLE `forum_messages` (
 -- Table structure for table `forum_notifs`
 --
 
+DROP TABLE IF EXISTS `forum_notifs`;
 CREATE TABLE `forum_notifs` (
   `notif_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL COMMENT 'destinataire',
@@ -242,6 +255,7 @@ CREATE TABLE `forum_notifs` (
 -- Table structure for table `forum_topics`
 --
 
+DROP TABLE IF EXISTS `forum_topics`;
 CREATE TABLE `forum_topics` (
   `topic_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -262,6 +276,7 @@ CREATE TABLE `forum_topics` (
 -- Table structure for table `messages_admin`
 --
 
+DROP TABLE IF EXISTS `messages_admin`;
 CREATE TABLE `messages_admin` (
   `message_id` int(11) NOT NULL,
   `nom` varchar(100) NOT NULL,
@@ -281,6 +296,7 @@ CREATE TABLE `messages_admin` (
 -- Table structure for table `notifications`
 --
 
+DROP TABLE IF EXISTS `notifications`;
 CREATE TABLE `notifications` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -298,6 +314,7 @@ CREATE TABLE `notifications` (
 -- Table structure for table `notify_list`
 --
 
+DROP TABLE IF EXISTS `notify_list`;
 CREATE TABLE `notify_list` (
   `id` int(11) NOT NULL,
   `nom` varchar(100) NOT NULL,
@@ -312,6 +329,7 @@ CREATE TABLE `notify_list` (
 -- Table structure for table `notify_log`
 --
 
+DROP TABLE IF EXISTS `notify_log`;
 CREATE TABLE `notify_log` (
   `log_id` int(11) NOT NULL,
   `date_envoi` datetime NOT NULL DEFAULT current_timestamp(),
@@ -326,6 +344,7 @@ CREATE TABLE `notify_log` (
 -- Table structure for table `panier`
 --
 
+DROP TABLE IF EXISTS `panier`;
 CREATE TABLE `panier` (
   `panier_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -337,9 +356,22 @@ CREATE TABLE `panier` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `parametres_stream`
+--
+
+DROP TABLE IF EXISTS `parametres_stream`;
+CREATE TABLE `parametres_stream` (
+  `cle` varchar(100) NOT NULL,
+  `valeur` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `plats`
 --
 
+DROP TABLE IF EXISTS `plats`;
 CREATE TABLE `plats` (
   `plat_id` int(11) NOT NULL,
   `restaurant_id` int(11) NOT NULL,
@@ -356,6 +388,7 @@ CREATE TABLE `plats` (
 -- Table structure for table `profil_stats`
 --
 
+DROP TABLE IF EXISTS `profil_stats`;
 CREATE TABLE `profil_stats` (
   `stat_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -369,6 +402,7 @@ CREATE TABLE `profil_stats` (
 -- Table structure for table `restaurants`
 --
 
+DROP TABLE IF EXISTS `restaurants`;
 CREATE TABLE `restaurants` (
   `restaurant_id` int(11) NOT NULL,
   `proprietaire_id` int(11) DEFAULT NULL,
@@ -379,7 +413,21 @@ CREATE TABLE `restaurants` (
   `categorie` varchar(50) DEFAULT NULL,
   `description_resto` text DEFAULT NULL,
   `verified` tinyint(1) NOT NULL DEFAULT 0,
-  `ouvert` tinyint(1) NOT NULL DEFAULT 1
+  `ouvert` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `sessions_actives`
+--
+
+DROP TABLE IF EXISTS `sessions_actives`;
+CREATE TABLE `sessions_actives` (
+  `session_id` varchar(128) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `derniere_activite` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
@@ -388,6 +436,7 @@ CREATE TABLE `restaurants` (
 -- Table structure for table `tentatives_conn`
 --
 
+DROP TABLE IF EXISTS `tentatives_conn`;
 CREATE TABLE `tentatives_conn` (
   `id` int(11) NOT NULL,
   `ip` varchar(50) NOT NULL,
@@ -401,6 +450,7 @@ CREATE TABLE `tentatives_conn` (
 -- Table structure for table `users`
 --
 
+DROP TABLE IF EXISTS `users`;
 CREATE TABLE `users` (
   `user_id` int(11) NOT NULL,
   `nom_user` varchar(45) NOT NULL,
@@ -420,7 +470,8 @@ CREATE TABLE `users` (
   `date_desactivation` datetime DEFAULT NULL,
   `type_compte` enum('client','proprietaire') DEFAULT 'client',
   `date_creation` timestamp NULL DEFAULT current_timestamp(),
-  `derniere_connexion` datetime DEFAULT NULL
+  `derniere_connexion` datetime DEFAULT NULL,
+  `role` varchar(32) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
@@ -429,6 +480,7 @@ CREATE TABLE `users` (
 -- Table structure for table `user_preferences`
 --
 
+DROP TABLE IF EXISTS `user_preferences`;
 CREATE TABLE `user_preferences` (
   `pref_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -593,6 +645,12 @@ ALTER TABLE `panier`
   ADD KEY `plat_id` (`plat_id`);
 
 --
+-- Indexes for table `parametres_stream`
+--
+ALTER TABLE `parametres_stream`
+  ADD PRIMARY KEY (`cle`);
+
+--
 -- Indexes for table `plats`
 --
 ALTER TABLE `plats`
@@ -612,6 +670,14 @@ ALTER TABLE `profil_stats`
 ALTER TABLE `restaurants`
   ADD PRIMARY KEY (`restaurant_id`),
   ADD KEY `proprietaire_id` (`proprietaire_id`);
+
+--
+-- Indexes for table `sessions_actives`
+--
+ALTER TABLE `sessions_actives`
+  ADD PRIMARY KEY (`session_id`),
+  ADD KEY `fk_sa_user` (`user_id`),
+  ADD KEY `idx_sa_activite` (`derniere_activite`);
 
 --
 -- Indexes for table `tentatives_conn`
@@ -837,3 +903,55 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+-- =========================
+-- DONNÉES DE DÉMO
+-- =========================
+
+-- Insérer des restaurants de démonstration
+INSERT INTO restaurants (proprietaire_id, restaurant_id, nom_restaurant, adresse, latitude, longitude, categorie, description_resto, verified) VALUES
+(1, 1, 'Le Vélo Gourmand', '12 rue du Lac, Paris', 48.8655, 2.3212, 'Français', 'Petits plats faits maison', 1),
+(1, 2, 'Sushi Koi', '45 avenue de Tokyo, Paris', 48.8566, 2.3522, 'Japonais', 'Sushis frais', 1),
+(1, 3, 'Pasta Bella', '7 rue Roma, Paris', 48.8600, 2.3300, 'Italien', 'Pâtes maison', 1),
+(1, 4, 'O\'TACOS', 'à côté de PAC CITY', 23, 23, 'Tacos (Français)', 'Tous nos Otacos et nos Obowls sont composés de frites et de notre sauce fromagère unique O\'TACOS®.\r\n\r\nO\'TACOS Propose des tacos customisés.\r\n\r\nO\'Tacos est une chaîne de restauration rapide qui propose un menu de tacos français. Dans les enseignes O\'Tacos, le client choisit ses ingrédients (viandes, sauces et suppléments), parmi une quarantaine d\'ingrédients dont deux sont des légumes. Les « Otacos » sont disponibles dans plusieurs tailles jusqu\'au Gigatacos, plus de deux kilogrammes. L\'enseigne utilise des viandes halal qui permet d\'accueillir un public de confession musulmane.', 1),
+(1, 5, 'Pizza Time', '12 Rue du Général Leclerc', 48.8655, 2.3212, 'Pizzas', 'Pizza Time', 1),
+(1, 6, 'Boulangerie du Coin', 'PAC CITY', 48.9833105, 2.2316699, 'Boulangerie Japonaise', 'On vend des patisseries asiates.', 1),
+(1, 7, 'Secret Taste', '276 avenue astrid briand , les pavillions sous-bois', 48.910839, 2.514442, '', 'fast-food mais pas comme les autres SIUUUUU MWAAAAAAHHHHH', 1);
+
+-- Insérer des plats de démonstration
+INSERT INTO plats (restaurant_id, nom_plat, prix, description_plat, type_plat) VALUES 
+(1, 'Planche charcuterie', 12.50, 'Assortiment de charcuterie locale', 'entree'), 
+(1, 'Tartine du jour', 8.00, 'Tartine selon l\'arrivage', 'plat'),
+(1, 'Crème brûlée', 6.50, 'Crème brûlée vanille', 'dessert'),
+(2, 'Assortiment sushi 8 pcs', 14.00, 'Mix de nigiri et maki', 'plat'),
+(2, 'California roll', 9.50, 'Avocat, crabe, concombre', 'plat'),
+(2, 'Mochi glacé', 5.00, 'Assortiment de 3 mochis', 'dessert'),
+(3, 'Spaghetti Carbonara', 11.00, 'Recette traditionnelle', 'plat'),
+(3, 'Lasagne maison', 12.00, 'Viande & béchamel maison', 'plat'),
+(3, 'Tiramisu', 6.00, 'Tiramisu fait maison', 'dessert'),
+(4, 'Tacos M - 1 viande', 8.90, 'Tacos garni d\'une viande.', 'plat'),
+(4, 'Tacos L - 2 viandes', 11.80, 'Tacos garni de 2 viandes', 'plat'),
+(4, 'Tacos XL - 2 Tortillas, 3 Viandes', 14.70, 'Tacos avec DOUBLE TORTILLA, + 3 viandes.', 'plat'),
+(4, 'GIGA TACOS', 21.30, '#SITUFINISCESTGRATUIT\r\n2,5 KG/Viandes. LA TAILLE D\'UN PLATEAU!!', 'plat'),
+(4, 'EAU PLATE', 420.00, 'LODIBIDON', 'boisson'),
+(5, 'Pizza Time', 15.00, 'Pizza spéciale Chef', 'plat'),
+(5, 'Pizza Campionne', 13.00, 'Champignons, viande hachée + mozza', 'plat'),
+(5, 'Pizza Pêcheur', 13.00, 'Oeuf coulant au centre, thon, etc.', 'plat'),
+(5, 'Mozza Sticks', 5.00, 'Batonnêts de Mozzarella panés et frits au four', 'accompagnement'),
+(6, 'CHICKEN BURGERR', 0.67, 'CHICKEN BURGERRRR', 'accompagnement'),
+(7, 'Pâtes foréstières', 10.00, "C\'est doux", 'plat');
+
+
+-- =========================
+-- COUPONS DE DÉMONSTRATION
+-- =========================
+INSERT INTO coupons (code_reduction, type, valeur, date_debut, date_fin, utilisation_max, restaurant_id, actif) VALUES
+('BIENVENUE10', 'pourcentage', 10.00, NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), NULL, NULL, 1),
+('PROMO5EUR', 'montant', 5.00, NOW(), DATE_ADD(NOW(), INTERVAL 15 DAY), 100, NULL, 1),
+('SUSHI20', 'pourcentage', 20.00, NOW(), DATE_ADD(NOW(), INTERVAL 7 DAY), 50, 2, 1);
+
+-- =========================
+-- ANNONCE DE DÉMONSTRATION
+-- =========================
+INSERT INTO annonces (titre, message, date_debut, date_fin, actif) VALUES
+('Bienvenue sur FoodHub !', 'Profitez de notre offre de bienvenue : 10% de réduction avec le code BIENVENUE10 sur votre première commande !', NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), 1);
