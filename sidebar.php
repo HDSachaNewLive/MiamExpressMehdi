@@ -50,7 +50,7 @@ if (isset($_SESSION['user_id'])) {
 }
 ?>
 <div id="sidebar" class="sidebar no-transition">
-  <h2>Menu</h2> 
+  <a class="brand-404" href="/home.php">🍽️ <span>FoodHub</span></a> 
   <br>
   <a href="home.php">🏠 Accueil</a>
   <?php if (isset($_SESSION['type_compte']) && $_SESSION['type_compte'] === 'proprietaire'): ?>
@@ -277,6 +277,35 @@ h2{
 
 .sidebar.no-transition {
   transition: none !important;
+}
+
+.brand-404 span {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.brand-404 {
+  position: fixed;
+  top: 1.4rem;
+  left: 1.8rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #333;
+  text-decoration: none;
+  z-index: 100;
+  background: var(--glass-bg);
+  backdrop-filter: blur(15px);
+  padding: 0.5rem 1rem;
+  border-radius: 0.8rem;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  transition: all 0.3s ease;
+}
+
+.brand-404:hover {
+  background: var(--glass-hover);
+  transform: translateY(-2px);
 }
 </style>
 

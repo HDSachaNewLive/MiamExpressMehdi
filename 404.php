@@ -324,7 +324,7 @@ if (!$matched) {
 </head>
 <body>
 
-<!-- Lien marque -->
+<!-- Lien accueil -->
 <a class="brand-404" href="/home.php">🍽️ <span>FoodHub</span></a>
 
 <main class="page-404">
