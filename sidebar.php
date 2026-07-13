@@ -50,7 +50,7 @@ if (isset($_SESSION['user_id'])) {
 }
 ?>
 <div id="sidebar" class="sidebar no-transition">
-  <a class="brand-404" href="/home.php">🍽️ <span>FoodHub</span></a> 
+  <a class="brand-404" href="/home.php"><span>FoodHub</span></a> 
   <br>
   <a href="home.php">🏠 Accueil</a>
   <?php if (isset($_SESSION['type_compte']) && $_SESSION['type_compte'] === 'proprietaire'): ?>
@@ -303,19 +303,21 @@ h2{
   background: #fef3ec;
   position: fixed;
   top: 1.4rem;
-  left: 1.8rem;
-  font-size: 1.35rem;
+  left: 2rem;
+  font-size: 1.7rem;
   font-weight: 700;
   color: #333;
   text-decoration: none;
   z-index: 100;
   background: var(--glass-bg);
   backdrop-filter: blur(15px);
-  padding: 0.5rem 1rem;
+  padding: 0.6rem 1rem;
   border-radius: 0.8rem;
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
   transition: all 0.3s ease;
+  margin-top: -4px;
+  margin-left: 60px;
 }
 
 .brand-404:hover {
@@ -328,8 +330,7 @@ h2{
   top: auto;
   left: auto;
   display: block;
-  width: fit-content;
-  margin: 0 auto 20px auto;
+  width: 70%;
   text-align: center;
 }
 </style>
