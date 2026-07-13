@@ -27,7 +27,6 @@ if (isset($_SESSION['user_id'])) {
         $pQ = $conn->query("SELECT COUNT(*) FROM restaurants WHERE verified = 0");
         $pendingRestoCount = (int)$pQ->fetchColumn();
     }
-
     
     if (isset($_SESSION['user_id'])) {
         $stmt_forum_badge = $conn->prepare("
@@ -203,12 +202,12 @@ $totalNotifCount = $notifCount + $pendingRestoCount;
   transform: translateX(4px);
 }
 
-.sidebar .logout {
+.sidebar a.logout {
   margin-top: auto;
   background: rgba(255, 80, 80, 0.2);
 }
 
-.sidebar .logout:hover {
+.sidebar a.logout:hover {
   background: rgba(255, 80, 80, 0.35);
 }
 
