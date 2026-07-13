@@ -146,6 +146,18 @@ $totalNotifCount = $notifCount + $pendingRestoCount;
 ?>
 
 <style>
+:root {
+  --accent:      #ff6b6b;
+  --accent2:     #ff8c42;
+  --accent-pale: rgba(255, 107, 107, 0.15);
+  --glass-bg:    rgba(255, 255, 255, 0.22);
+  --glass-hover: rgba(255, 255, 255, 0.30);
+  --border:      rgba(255, 255, 255, 0.35);
+  --shadow:      0 8px 32px rgba(0, 0, 0, 0.15);
+  --text-dark:   #333;
+  --text-mid:    #555;
+  --text-light:  #888;
+}
 /* barre */
 .sidebar {
   position: fixed;
@@ -172,7 +184,7 @@ $totalNotifCount = $notifCount + $pendingRestoCount;
   left: 0;
 }
 
-.sidebar a {
+.sidebar a:not(.brand-404) {
   display: block;
   font-family: 'HSR';
   font-weight: 600;
@@ -185,7 +197,7 @@ $totalNotifCount = $notifCount + $pendingRestoCount;
   background: rgba(92, 92, 92, 0.2);
 }
 
-.sidebar a:hover {
+.sidebar a:hover:not(.brand-404) {
   background: rgba(255, 107, 107, 0.25);
   color: #fff;
   transform: translateX(4px);
@@ -280,12 +292,15 @@ h2{
 }
 
 .brand-404 span {
+  font-family: 'HSR';
   background: linear-gradient(135deg, var(--accent), var(--accent2));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 .brand-404 {
+  font-family: 'HSR';
+  background: #fef3ec;
   position: fixed;
   top: 1.4rem;
   left: 1.8rem;
@@ -306,6 +321,16 @@ h2{
 .brand-404:hover {
   background: var(--glass-hover);
   transform: translateY(-2px);
+}
+
+.sidebar .brand-404 {
+  position: static;
+  top: auto;
+  left: auto;
+  display: block;
+  width: fit-content;
+  margin: 0 auto 20px auto;
+  text-align: center;
 }
 </style>
 
