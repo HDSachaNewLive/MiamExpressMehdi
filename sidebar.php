@@ -75,7 +75,6 @@ if (isset($_SESSION['user_id'])) {
     
   <?php if (isset($_SESSION['user_id'])): ?>
     <a id="nte" href="media_player.php">💿 NTE OST</a>
-    <a id="smash" href="stream_smash.php">⚔️ Smash en direct</a>
     <a href="mes_favoris.php">❤️ Mes Favoris</a>
     <a href="forum.php" class="notif-link">
         💬 Discussion
@@ -86,6 +85,7 @@ if (isset($_SESSION['user_id'])) {
         <span class="notif-badge"><?= (int)$totalNotifCount ?></span>
       <?php endif; ?>
     </a>
+    <a href="approvisionnement.php" class="sidebar-link-solde">💰 Mon solde</a>
     <a href="parametres.php">⚙️ Paramètres</a>
     
   <?php if (isset($_SESSION['user_id']) && isset($conn) && fh_is_admin($conn)): ?>
@@ -94,6 +94,7 @@ if (isset($_SESSION['user_id'])) {
     <a href="admin_coupons.php">🎟️ Coupons</a>
     <a href="admin_annonces.php">📢 Annonces</a>
   <?php endif; ?>
+    <a id="smash" href="stream_smash.php">⚔️ Smash en direct</a>
     <a href="contact_admin.php">📧 Contact</a>
     <a href="apropos.php">🧭 À propos</a>
   <?php if (isset($_SESSION['user_id'])): ?>
@@ -209,6 +210,16 @@ $totalNotifCount = $notifCount + $pendingRestoCount;
 
 .sidebar a.logout:hover {
   background: rgba(255, 80, 80, 0.35);
+}
+
+.sidebar a.sidebar-link-solde {
+  background: rgba(76, 175, 80, 0.25);
+  border: 1px solid rgba(76, 175, 80, 0.35);
+}
+
+.sidebar a.sidebar-link-solde:hover {
+  background: rgba(76, 175, 80, 0.4);
+  transform: translateX(4px);
 }
 
 /*bouton menu */

@@ -1,7 +1,6 @@
 <?php
 require "db/config.php";
-require_once __DIR__ . '/csrf_helper.php';
-require_once __DIR__ . '/auth_helper.php';
+session_start();
 
 if (!isset($_SESSION["user_id"])) {
   header("Location: login.php");
@@ -10,16 +9,10 @@ if (!isset($_SESSION["user_id"])) {
 
 $user_id = (int) $_SESSION["user_id"];
 
-$is_owner = fh_is_admin($conn);
+$is_owner = ($user_id === 1);
 $siteOwnerId = 1;
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-
-  // Vérification CSRF pour toutes les actions POST
-  if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
-    header("Location: notifications.php");
-    exit();
-  }
 
   if (isset($_POST["delete_notif_id"])) {
     $nid = (int) $_POST["delete_notif_id"];
@@ -66,12 +59,18 @@ $stmt = $conn->prepare("
         n.is_read,
         n.restaurant_id,
         n.avis_id,
+        n.cadeau_id,
         r.nom_restaurant,
         a.commentaire   AS avis_commentaire,
-        a.reponse       AS avis_reponse
+        a.reponse       AS avis_reponse,
+        g.montant       AS cadeau_montant,
+        g.message       AS cadeau_message,
+        exp.nom_user    AS cadeau_expediteur
     FROM notifications n
     LEFT JOIN restaurants r ON n.restaurant_id = r.restaurant_id
     LEFT JOIN avis a        ON n.avis_id        = a.avis_id
+    LEFT JOIN cadeaux g     ON n.cadeau_id      = g.cadeau_id
+    LEFT JOIN users exp     ON g.expediteur_id  = exp.user_id
     WHERE n.user_id = ?
     ORDER BY n.created_at DESC
 ");
@@ -265,6 +264,20 @@ $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
       border-radius: 999px;
       box-shadow: 0 2px 8px rgba(255, 107, 107, 0.45);
     }
+
+    .notif-card.notif-cadeau {
+      border-left: 4px solid #4CAF50;
+      background: rgba(76, 175, 80, 0.1);
+    }
+
+    .notif-card.notif-cadeau .notif-head h3 {
+      color: #2e7d32;
+    }
+
+    .notif-card.notif-cadeau .notif-comment {
+      background: rgba(76, 175, 80, 0.08);
+      color: #2e5f37;
+    }
   </style>
 </head>
 
@@ -291,23 +304,30 @@ $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <?php if (!empty($notifications)): ?>
       <div class="notif-section">
         <?php foreach ($notifications as $n): ?>
-          <div class="notif-card <?= $n["is_read"] ? "read" : "unread" ?>">
+          <div class="notif-card <?= $n["is_read"] ? "read" : "unread" ?> <?= $n["notif_type"] === "cadeau" ? "notif-cadeau" : "" ?>">
             <div class="notif-head">
-              <h3><?= htmlspecialchars($n["nom_restaurant"] ?? "Notification") ?></h3>
+              <h3><?= $n["notif_type"] === "cadeau" ? "🎁 Cadeau reçu" : htmlspecialchars($n["nom_restaurant"] ?? "Notification") ?></h3>
             </div>
             <div class="notif-message"><?= htmlspecialchars($n["notif_message"]) ?></div>
 
-            <?php
-            $notif_content = $n["notif_type"] === "reply" ? $n["avis_reponse"] : $n["avis_commentaire"];
-            if (!empty($notif_content)):
-              ?>
-              <div class="notif-comment"><?= htmlspecialchars(trim($notif_content)) ?></div>
-            <?php endif; ?>
+            <?php if ($n["notif_type"] === "cadeau"): ?>
+              <?php if (!empty($n["cadeau_message"])): ?>
+                <div class="notif-comment">💬 « <?= htmlspecialchars($n["cadeau_message"]) ?> »</div>
+              <?php endif; ?>
+            <?php else:
+              $notif_content = $n["notif_type"] === "reply" ? $n["avis_reponse"] : $n["avis_commentaire"];
+              if (!empty($notif_content)):
+                ?>
+                <div class="notif-comment"><?= htmlspecialchars(trim($notif_content)) ?></div>
+              <?php endif;
+            endif; ?>
 
             <div class="notif-meta">Reçu le <?= date("d/m/Y à H:i", strtotime($n["created_at"])) ?></div>
 
             <div class="notif-actions">
-              <?php if (!empty($n["restaurant_id"])):
+              <?php if ($n["notif_type"] === "cadeau"): ?>
+                <a class="btn" href="approvisionnement.php" style="background:linear-gradient(135deg,#4CAF50,#66bb6a);">💰 Voir mon solde</a>
+              <?php elseif (!empty($n["restaurant_id"])):
                 $href = "menu.php?restaurant_id=" . (int) $n["restaurant_id"];
                 if (!empty($n["avis_id"]))
                   $href .= "#comment-" . (int) $n["avis_id"];
@@ -316,7 +336,6 @@ $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
               <?php endif; ?>
               <form method="post" style="margin:0;" onsubmit="return confirm('Supprimer cette notification ?');">
                 <input type="hidden" name="delete_notif_id" value="<?= (int) $n["notif_id"] ?>">
-                <?= fh_csrf_field() ?>
                 <button type="submit" class="btn btn-delete">❌ Supprimer</button>
               </form>
             </div>
@@ -336,9 +355,6 @@ $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <!-- Vérification des restaurants -->
     <main class="container">
       <h2>🛠 Vérification des restaurants</h2>
-      <p style="font-size:0.7rem;color:#888;text-align:left;margin-top:-0.4rem;margin-bottom:1rem;">
-        Les restaurants non validés dans les 10 minutes sont vérifiés automatiquement par le système. Vous pouvez toujours valider ou refuser manuellement.
-      </p>
       <?php
       $pendingStmt = $conn->prepare("SELECT * FROM restaurants WHERE verified = 0 ORDER BY restaurant_id DESC");
       $pendingStmt->execute();
@@ -374,7 +390,6 @@ $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
           echo "<div class='notif-actions'>";
           echo "<form method='post' style='margin:0; display:flex; gap:10px;'>";
           echo "<input type='hidden' name='verify_id' value='{$rid}'>";
-            echo fh_csrf_field();
           echo "<button class='btn' name='action' value='accept'>✅ Accepter</button>";
           echo "<button class='btn btn-delete' name='action' value='refuse'>❌ Refuser</button>";
           echo "</form></div>";
@@ -427,7 +442,6 @@ $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
           echo "<a class='btn' href='admin_messages.php' style='background:linear-gradient(135deg,#ff4757,#c0392b);'>⚙️ Gérer</a>";
           echo "<form method='post' style='margin:0;' onsubmit='return confirm(\"Ignorer ce signalement ?\")'>";
           echo "<input type='hidden' name='ignorer_signalement_id' value='" . (int)$sig['message_id'] . "'>";
-            echo fh_csrf_field();
           echo "<button type='submit' class='btn' style='background:rgba(180,180,180,0.55);color:#333;font-weight:600;'>✕ Ignorer</button>";          
           echo "</form></div>";
           echo "</div>";

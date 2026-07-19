@@ -19,8 +19,25 @@ if (isset($_POST['annuler_commande'])) {
     header("Location: suivi_commande.php?commande_id=$cancel_id");
     exit;
   }
-  $stmt = $conn->prepare("UPDATE commandes SET statut = 'annulee' WHERE commande_id = ? AND user_id = ? AND statut NOT IN ('livree','annulee')");
-  $stmt->execute([$cancel_id, $uid]);
+
+  $conn->beginTransaction();
+  try {
+      $stmtSolde = $conn->prepare("SELECT montant_solde_utilise FROM commandes WHERE commande_id = ? AND user_id = ? AND statut NOT IN ('livree','annulee')");
+      $stmtSolde->execute([$cancel_id, $uid]);
+      $montant_a_rembourser = $stmtSolde->fetchColumn();
+
+      $stmt = $conn->prepare("UPDATE commandes SET statut = 'annulee' WHERE commande_id = ? AND user_id = ? AND statut NOT IN ('livree','annulee')");
+      $stmt->execute([$cancel_id, $uid]);
+
+      if ($stmt->rowCount() > 0 && $montant_a_rembourser > 0) {
+          $conn->prepare("UPDATE users SET solde = solde + ? WHERE user_id = ?")->execute([$montant_a_rembourser, $uid]);
+      }
+      $conn->commit();
+  } catch (Exception $e) {
+      $conn->rollBack();
+      error_log('[suivi_commande] Erreur remboursement solde: ' . $e->getMessage());
+  }
+
   header("Location: suivi_commande.php?commande_id=$cancel_id");
   exit;
 }
@@ -215,6 +232,29 @@ else {
     .btn-cancel{
       margin-top: 1rem;
     }
+
+    .paiement-livraison-info {
+      padding: 0.8rem 1.1rem;
+      border-radius: 10px;
+      margin: 0.8rem 0 1.2rem 0;
+      font-weight: 600;
+      font-size: 0.92rem;
+    }
+    .paiement-livraison-attente {
+      background: rgba(255, 193, 7, 0.15);
+      border-left: 4px solid #FFC107;
+      color: #856404;
+    }
+    .paiement-livraison-actif {
+      background: rgba(156, 39, 176, 0.15);
+      border-left: 4px solid #9C27B0;
+      color: #6a1b9a;
+    }
+    .paiement-livraison-ok {
+      background: rgba(76, 175, 80, 0.15);
+      border-left: 4px solid #4CAF50;
+      color: #2e7d32;
+    }
   </style>
 </head>
 <main>
@@ -233,7 +273,24 @@ else {
         </span>
       </div>
       <p><strong>Date :</strong> <?= htmlspecialchars($cmd['date_commande']) ?></p>
-      
+      <p><strong>Mode de paiement :</strong> <?= htmlspecialchars(['carte' => '💳 Carte', 'paypal' => 'PayPal', 'livraison' => '🚚 À la livraison'][$cmd['mode_paiement']] ?? $cmd['mode_paiement']) ?></p>
+
+      <?php if ($cmd['mode_paiement'] === 'livraison'): ?>
+        <?php if (in_array($cmd['statut'], ['en_attente', 'en_preparation'])): ?>
+          <div class="paiement-livraison-info paiement-livraison-attente">
+            💵 Paiement à la livraison — rien à régler pour l'instant, tu paieras le livreur à la réception de ta commande.
+          </div>
+        <?php elseif ($cmd['statut'] === 'en_livraison'): ?>
+          <div class="paiement-livraison-info paiement-livraison-actif">
+            🚚 Ta commande est en route ! Prépare <strong><?= number_format($cmd['montant_total'] - $cmd['montant_solde_utilise'], 2) ?> €</strong> à régler auprès du livreur.
+          </div>
+        <?php elseif ($cmd['statut'] === 'livree'): ?>
+          <div class="paiement-livraison-info paiement-livraison-ok">
+            ✅ Commande livrée et réglée au livreur.
+          </div>
+        <?php endif; ?>
+      <?php endif; ?>
+
       <h4>Contenu :</h4>
       <ul class="order-list">
         <?php foreach($items as $it): ?>
@@ -268,6 +325,13 @@ else {
               📌 Ce coupon s'applique uniquement aux articles de <strong><?= htmlspecialchars($resto_name) ?></strong> (<?= number_format($eligible_total, 2) ?> €)
             </div>
           <?php endif; ?>
+        <?php endif; ?>
+
+        <?php if ($cmd['montant_solde_utilise'] > 0): ?>
+          <div class="summary-line discount">
+            <span>💰 Payé via ton solde :</span>
+            <span>-<?= number_format($cmd['montant_solde_utilise'], 2) ?> €</span>
+          </div>
         <?php endif; ?>
         
         <div class="summary-line total">
@@ -340,7 +404,11 @@ else {
               <?= htmlspecialchars($c['statut']) ?>
             </span>
           </div>
-          <p><strong>Date :</strong> <?= htmlspecialchars($c['date_commande']) ?></p>
+          <p><strong>Date :</strong> <?= htmlspecialchars($c['date_commande']) ?>
+            <?php if ($c['mode_paiement'] === 'livraison'): ?>
+              <span style="color:#9C27B0; font-weight:600;">· 🚚 Paiement à la livraison</span>
+            <?php endif; ?>
+          </p>
           <p><strong>Total :</strong> <?= number_format($c['montant_total'],2) ?> €
             <?php if ($c['montant_reduction'] > 0): ?>
               <span style="color: #4CAF50; font-weight: 600;">

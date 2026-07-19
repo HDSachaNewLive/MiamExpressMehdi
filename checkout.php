@@ -97,8 +97,8 @@ $numero_utilisateur = $maxNum + 1;
 $conn->beginTransaction();
 
 try {
-    // INSERT unique dans commandes
-    $stmt = $conn->prepare("INSERT INTO commandes (user_id, numero_utilisateur, montant_total, montant_reduction, coupon_id, mode_paiement, date_commande, statut) VALUES (?, ?, ?, ?, ?, ?, NOW(), 'en_attente')");
+    // INSERT unique dans commandes — le montant de solde utilisé sera choisi à l'étape paiement_simule.php
+    $stmt = $conn->prepare("INSERT INTO commandes (user_id, numero_utilisateur, montant_total, montant_reduction, montant_solde_utilise, coupon_id, mode_paiement, date_commande, statut) VALUES (?, ?, ?, ?, 0, ?, ?, NOW(), 'en_attente')");
     $stmt->execute([$uid, $numero_utilisateur, $final_total, $discount_amount, $coupon_id, $mode]);
     $commande_id = $conn->lastInsertId();
 
@@ -122,8 +122,16 @@ try {
     unset($_SESSION['coupon']);
     
     $conn->commit();
-    
-    // Rediriger vers paiement simulé
+
+    // Paiement à la livraison : pas de simulation de carte, la commande reste "en_attente"
+    // et suivra son cours normal (en_preparation -> en_livraison -> livree), le règlement
+    // se faisant en espèces/carte directement auprès du livreur.
+    if ($mode === 'livraison') {
+        header("Location: suivi_commande.php?commande_id=".$commande_id);
+        exit;
+    }
+
+    // Carte / PayPal (simulés) : passage obligatoire par la page de paiement
     header("Location: paiement_simule.php?commande_id=".$commande_id);
     exit;
     

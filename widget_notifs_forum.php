@@ -16,7 +16,7 @@ if (isset($_SESSION['user_id']) && isset($conn)) {
             <span id="badge-notifs-forum" style="display:none;">0</span>
         </div>
         <button id="btn-toggle-notifs-forum" type="button" title="Minimiser/Maximiser"
-            style="background: none; border: none; cursor: pointer; font-size: 1.1rem; color: #f35959; padding: 0; transition: all 0.2s ease;">
+            style="background: none; border: none; cursor: pointer; font-size: 1.1rem; color: #f35959; padding: 0; transition: transform 0.3s ease;">
             ▼
         </button>
     </div>
@@ -154,20 +154,42 @@ if (isset($_SESSION['user_id']) && isset($conn)) {
             timer_polling = setTimeout(faire_polling, INTERVALLE_MS);
         }
 
-        // ── Toggle minimisation ─────────────────────────────────
+        //  Toggle minimisation (animée)
         btn_toggle.addEventListener('click', (e) => {
             e.stopPropagation();
             widget_minimise = !widget_minimise;
+
+            liste.classList.remove('anim-ouverture', 'anim-fermeture');
+
             if (widget_minimise) {
+                //  Fermeture 
                 widget.classList.add('widget-minimise');
-                liste.style.display = 'none';
                 btn_toggle.textContent = '▲';
                 btn_toggle.title = 'Afficher les notifs';
+
+                liste.style.display = 'block'; // reste visible le temps de l'anim
+                void liste.offsetWidth; // force le reflow pour relancer l'animation
+                liste.classList.add('anim-fermeture');
+
+                liste.addEventListener('animationend', function handler() {
+                    liste.style.display = 'none';
+                    liste.classList.remove('anim-fermeture');
+                    liste.removeEventListener('animationend', handler);
+                });
             } else {
+                //  Ouverture 
                 widget.classList.remove('widget-minimise');
-                liste.style.display = 'block';
                 btn_toggle.textContent = '▼';
                 btn_toggle.title = 'Minimiser les notifs';
+
+                liste.style.display = 'block';
+                void liste.offsetWidth;
+                liste.classList.add('anim-ouverture');
+
+                liste.addEventListener('animationend', function handler() {
+                    liste.classList.remove('anim-ouverture');
+                    liste.removeEventListener('animationend', handler);
+                });
             }
         });
 
@@ -196,7 +218,7 @@ if (isset($_SESSION['user_id']) && isset($conn)) {
 </script>
 
 <style>
-    /* ── Widget conteneur toujours visible ───────────────────── */
+    /*  Widget conteneur toujours visible ─ */
     /* Cache complètement le widget si désactivé */
     #widget-notifs-forum.widget-hidden {
         display: none !important;
@@ -215,7 +237,9 @@ if (isset($_SESSION['user_id']) && isset($conn)) {
         box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
         overflow: hidden;
         animation: slideInForum 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-        transition: all 0.3s ease;
+        transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+                    background 0.3s ease,
+                    box-shadow 0.3s ease;
     }
 
     #widget-notifs-forum:hover {
@@ -242,6 +266,9 @@ if (isset($_SESSION['user_id']) && isset($conn)) {
             right: 20px;
             width: 300px;
         }
+        #widget-notifs-forum.widget-minimise {
+            width: 190px;
+        }
     }
 
     @media (max-width: 768px) {
@@ -251,19 +278,17 @@ if (isset($_SESSION['user_id']) && isset($conn)) {
             right: 10px;
             width: 280px;
         }
+        #widget-notifs-forum.widget-minimise {
+            width: 190px;
+        }
     }
 
     /* État minimisé */
     #widget-notifs-forum.widget-minimise {
-        width: auto;
-        min-width: 180px;
+        width: 190px;
     }
 
-    #widget-notifs-forum.widget-minimise #liste-notifs-forum {
-        display: none;
-    }
-
-    /* ── En-tête du widget ──────────────────────────────────── */
+    /*  En-tête du widget  */
     #entete-notifs-forum {
         display: flex;
         justify-content: space-between;
@@ -277,6 +302,10 @@ if (isset($_SESSION['user_id']) && isset($conn)) {
         letter-spacing: 0.3px;
     }
 
+    #btn-toggle-notifs-forum.rotate-ouvert {
+        transform: rotate(180deg);
+    }
+
     #btn-toggle-notifs-forum {
         color: #ff6b6b;
     }
@@ -287,7 +316,7 @@ if (isset($_SESSION['user_id']) && isset($conn)) {
         outline: none;
     }
 
-    /* ── Badge nombre de notifs ────────────────────────────── */
+    /*  Badge nombre de notifs  */
     #badge-notifs-forum {
         min-width: 24px;
         height: 24px;
@@ -325,7 +354,7 @@ if (isset($_SESSION['user_id']) && isset($conn)) {
         animation: badge-pulse 0.5s ease;
     }
 
-    /* ── Liste des notifs avec scroll ──────────────────────── */
+    /*  Liste des notifs avec scroll  */
     #liste-notifs-forum {
         max-height: 420px;
         overflow-y: auto;
@@ -352,7 +381,44 @@ if (isset($_SESSION['user_id']) && isset($conn)) {
         background: rgba(224, 224, 224, 0.6);
     }
 
-    /* ── Item notif ─────────────────────────────────────────── */
+    /* ── Animations d'ouverture / fermeture ─────────────────── */
+    @keyframes notifForumOuverture {
+        from {
+            max-height: 0;
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+        to {
+            max-height: 420px;
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes notifForumFermeture {
+        from {
+            max-height: 420px;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        to {
+            max-height: 0;
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+    }
+
+    #liste-notifs-forum.anim-ouverture {
+        animation: notifForumOuverture 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        overflow: hidden;
+    }
+
+    #liste-notifs-forum.anim-fermeture {
+        animation: notifForumFermeture 0.28s ease forwards;
+        overflow: hidden;
+    }
+
+    /*  Item notif ─ */
     .notif-forum-item {
         display: flex;
         justify-content: space-between;

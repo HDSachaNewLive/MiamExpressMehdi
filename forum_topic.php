@@ -8,11 +8,32 @@ if (!isset($_SESSION['user_id'])) {
 require_once 'db/config.php';
 require_once __DIR__ . '/csrf_helper.php';
 require_once __DIR__ . '/auth_helper.php';
+require_once __DIR__ . '/upload_helper.php';
+
+// Dossier de stockage des images du forum (chemin disque + chemin web relatif)
+define('FH_FORUM_UPLOAD_DIR', __DIR__ . '/uploads/forum');
+define('FH_FORUM_UPLOAD_WEB', 'uploads/forum');
+
 function truncate_words(string $text, int $max_words = 6): string {
     $words = preg_split('/\s+/u', trim($text), -1, PREG_SPLIT_NO_EMPTY);
     if (count($words) <= $max_words) return $text;
     return implode(' ', array_slice($words, 0, $max_words)) . '…';
 }
+/**
+ * Supprime du disque les fichiers images liées à un message forum.
+ * Les lignes en BDD partent ensuite via ON DELETE CASCADE.
+ */
+function fh_delete_forum_message_images(PDO $conn, int $message_id): void {
+    $stmt = $conn->prepare("SELECT chemin_image FROM forum_message_images WHERE message_id = ?");
+    $stmt->execute([$message_id]);
+    foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $chemin) {
+        $full = __DIR__ . '/' . $chemin;
+        if ($chemin !== '' && file_exists($full)) {
+            @unlink($full);
+        }
+    }
+}
+
 function render_forum_message(string $text): string {
     $safe = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
     $safe = preg_replace(
@@ -43,7 +64,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax']) && isset($_PO
   $topic_id = (int) ($_GET['topic_id'] ?? 0);
   $contenu = trim($_POST['contenu'] ?? '');
 
-  if (empty($contenu)) {
+  // ── Traitement des images jointes (max 2, 5 Mo chacune) ──
+  $uploadedImages = [];
+  if (!empty($_FILES['images']) && !empty($_FILES['images']['name'][0])) {
+    $nbImages = count($_FILES['images']['name']);
+
+    if ($nbImages > 2) {
+      echo json_encode(['success' => false, 'error' => 'Maximum 2 images par message.']);
+      exit;
+    }
+
+    if (!is_dir(FH_FORUM_UPLOAD_DIR)) {
+      @mkdir(FH_FORUM_UPLOAD_DIR, 0755, true);
+    }
+
+    for ($i = 0; $i < $nbImages; $i++) {
+      if ($_FILES['images']['error'][$i] !== UPLOAD_ERR_OK) continue;
+
+      $single = [
+        'name'     => $_FILES['images']['name'][$i],
+        'type'     => $_FILES['images']['type'][$i],
+        'tmp_name' => $_FILES['images']['tmp_name'][$i],
+        'error'    => $_FILES['images']['error'][$i],
+        'size'     => $_FILES['images']['size'][$i],
+      ];
+
+      $res = fh_handle_forum_image_upload($single, FH_FORUM_UPLOAD_DIR);
+      if (!$res['success']) {
+        echo json_encode(['success' => false, 'error' => $res['error']]);
+        exit;
+      }
+      $uploadedImages[] = FH_FORUM_UPLOAD_WEB . '/' . $res['filename'];
+    }
+  }
+
+  if (empty($contenu) && empty($uploadedImages)) {
     echo json_encode(['success' => false, 'error' => 'Le message est vide']);
     exit;
   }
@@ -70,6 +125,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax']) && isset($_PO
   $stmt = $conn->prepare("INSERT INTO forum_messages (topic_id, user_id, contenu, parent_id) VALUES (?, ?, ?, ?)");
   $stmt->execute([$topic_id, $uid, $contenu, $parent_id]);
   $message_id = $conn->lastInsertId();
+
+  // Enregistrer les images jointes
+  if (!empty($uploadedImages)) {
+    $stmt_img = $conn->prepare("INSERT INTO forum_message_images (message_id, chemin_image, ordre) VALUES (?, ?, ?)");
+    foreach ($uploadedImages as $ordre => $chemin) {
+      $stmt_img->execute([$message_id, $chemin, $ordre]);
+    }
+  }
 
   //lettre à  jour le sujet
   $conn->prepare("UPDATE forum_topics SET nb_reponses = nb_reponses + 1, derniere_activite = NOW() WHERE topic_id = ?")->execute([$topic_id]);
@@ -158,6 +221,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax']) && isset($_PO
         'can_delete'     => true,
         'parent_id'      => $parent_id,
         'parent_preview' => $parent_preview,
+        'images'         => $uploadedImages,
       ]
   ]);
   exit;
@@ -181,6 +245,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax']) && isset($_PO
   $stmt->execute([$mid]);
   $row = $stmt->fetch(PDO::FETCH_ASSOC);
   if ($row && ($row['user_id'] == $uid_del || $is_admin_del)) {
+    fh_delete_forum_message_images($conn, $mid);
     $conn->prepare("DELETE FROM forum_messages WHERE message_id = ?")->execute([$mid]);
     $conn->prepare("UPDATE forum_topics SET nb_reponses = GREATEST(0, nb_reponses - 1) WHERE topic_id = ?")->execute([$row['topic_id']]);
     echo json_encode(['success' => true]);
@@ -229,6 +294,11 @@ if (isset($_GET['poll']) && $_GET['poll'] === '1' && isset($_GET['last_message_i
         if ($p) $parent_preview = ['contenu' => truncate_words($p['contenu']), 'nom_user' => $p['nom_user']];
     }
 
+    // Images jointes à ce message
+    $stmt_img = $conn->prepare("SELECT chemin_image FROM forum_message_images WHERE message_id = ? ORDER BY ordre ASC");
+    $stmt_img->execute([$msg['message_id']]);
+    $msg_images = $stmt_img->fetchAll(PDO::FETCH_COLUMN);
+
     $out[] = [
         'message_id'     => (int) $msg['message_id'],
         'contenu'        => $msg['contenu'],
@@ -241,6 +311,7 @@ if (isset($_GET['poll']) && $_GET['poll'] === '1' && isset($_GET['last_message_i
         'user_id'        => (int) $msg['user_id'],
         'parent_id'      => $msg['parent_id'] ? (int)$msg['parent_id'] : null,
         'parent_preview' => $parent_preview,
+        'images'         => $msg_images,
     ];
   }
   
@@ -300,6 +371,11 @@ if ($is_admin && isset($_POST['admin_action'])) {
     $conn->prepare("UPDATE forum_topics SET verrouille = NOT verrouille WHERE topic_id = ?")->execute([$topic_id]);
     $message = "✅ Sujet verrouillé/déverrouillé";
   } elseif ($action === 'supprimer') {
+    $stmt_ids = $conn->prepare("SELECT message_id FROM forum_messages WHERE topic_id = ?");
+    $stmt_ids->execute([$topic_id]);
+    foreach ($stmt_ids->fetchAll(PDO::FETCH_COLUMN) as $mid_cleanup) {
+      fh_delete_forum_message_images($conn, (int)$mid_cleanup);
+    }
     $conn->prepare("DELETE FROM forum_topics WHERE topic_id = ?")->execute([$topic_id]);
     header('Location: forum.php');
     exit;
@@ -325,6 +401,7 @@ if (isset($_POST['delete_message']) && ($connected || $is_admin)) {
     $msg = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($msg && ($msg['user_id'] == $uid || $is_admin)) {
+      fh_delete_forum_message_images($conn, $message_id);
       $conn->prepare("DELETE FROM forum_messages WHERE message_id = ?")->execute([$message_id]);
       $conn->prepare("UPDATE forum_topics SET nb_reponses = nb_reponses - 1 WHERE topic_id = ?")->execute([$topic_id]);
       $message = "✅ Message supprimé.";
@@ -347,6 +424,20 @@ $stmt = $conn->prepare("
 ");
 $stmt->execute([$topic_id]);
 $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Précharger les images de tous les messages du topic (groupées par message_id)
+$imagesByMessage = [];
+$stmt_imgs_all = $conn->prepare("
+    SELECT fmi.message_id, fmi.chemin_image
+    FROM forum_message_images fmi
+    INNER JOIN forum_messages fm ON fmi.message_id = fm.message_id
+    WHERE fm.topic_id = ?
+    ORDER BY fmi.ordre ASC
+");
+$stmt_imgs_all->execute([$topic_id]);
+foreach ($stmt_imgs_all->fetchAll(PDO::FETCH_ASSOC) as $row_img) {
+    $imagesByMessage[(int)$row_img['message_id']][] = $row_img['chemin_image'];
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -477,7 +568,18 @@ $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </div>
                       </div>
                     <?php endif; ?>
+                    <?php $msg_images = $imagesByMessage[(int)$msg['message_id']] ?? []; ?>
+                    <?php if (!empty($msg_images)): ?>
+                      <div class="bubble-images bubble-images-<?= count($msg_images) ?>">
+                        <?php foreach ($msg_images as $img_path): ?>
+                          <img src="<?= htmlspecialchars($img_path) ?>" alt="Image jointe" class="bubble-img"
+                               onclick="openForumImageModal('<?= htmlspecialchars($img_path, ENT_QUOTES) ?>')">
+                        <?php endforeach; ?>
+                      </div>
+                    <?php endif; ?>
+                    <?php if (trim($msg['contenu']) !== ''): ?>
                     <div class="bubble-content"><?= render_forum_message($msg['contenu']) ?></div>
+                    <?php endif; ?>
                     <?php if ($msg['modifie']): ?>
                       <div class="bubble-footer"><span class="bubble-edited">✏️</span></div>
                     <?php endif; ?>
@@ -519,11 +621,15 @@ $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
               <span>↩ Répondre à <strong id="reply-indicator-name"></strong></span>
               <button type="button" class="clear-reply" onclick="clearReplyTarget()" style="cursor:pointer;color:#f35959;">⨉ Annuler</button>
             </div>
-            <form method="post" class="reply-form" id="reply-form">
+            <!-- Aperçu des images à joindre (max 2, caché si vide) -->
+            <div id="forum-image-preview" class="forum-image-preview" style="display:none;"></div>
+            <form method="post" class="reply-form" id="reply-form" enctype="multipart/form-data">
               <input type="hidden" name="reply" value="1">
               <?= fh_csrf_field() ?>
               <input type="hidden" name="parent_id" id="reply-parent-id" value="">
               <textarea maxlength="2000" name="contenu" id="reply-content" placeholder="Écris un message... (max 2000 caractères)"></textarea>
+              <input type="file" id="forum-image-input" accept="image/*" multiple hidden>
+              <button type="button" class="btn-add-image" id="btn-add-image" title="Ajouter une image (max 2, 5 Mo chacune)">+</button>
               <button type="submit" class="btn-send">Envoyer</button>
             </form>
           </div>
@@ -537,6 +643,12 @@ $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     <p><a href="forum.php" class="back-link">← Retour au forum</a></p>
   </main>
+
+  <!-- Modal pour agrandir les images jointes aux messages -->
+  <div id="forumImageModal" class="modal" onclick="closeForumImageModal()">
+    <span class="close">&times;</span>
+    <img class="modal-content" id="forumModalImage">
+  </div>
   <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/vanta/dist/vanta.waves.min.js"></script>
 
@@ -587,13 +699,49 @@ $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
       const form = document.getElementById('reply-form');
       const messagesContainer = document.getElementById('messages-container');
 
+      // ── Images jointes : bouton +, collage presse-papiers, retrait d'aperçu ──
+      const forumImageInput = document.getElementById('forum-image-input');
+      const btnAddImage = document.getElementById('btn-add-image');
+      const forumImagePreviewBox = document.getElementById('forum-image-preview');
+
+      if (btnAddImage && forumImageInput) {
+        btnAddImage.addEventListener('click', () => forumImageInput.click());
+        forumImageInput.addEventListener('change', (e) => {
+          Array.from(e.target.files).forEach(addForumImageFile);
+          forumImageInput.value = '';
+        });
+      }
+
+      if (textarea) {
+        textarea.addEventListener('paste', (e) => {
+          const items = e.clipboardData?.items;
+          if (!items) return;
+          for (const item of items) {
+            if (item.type && item.type.startsWith('image/')) {
+              const file = item.getAsFile();
+              if (file) addForumImageFile(file);
+            }
+          }
+        });
+      }
+
+      if (forumImagePreviewBox) {
+        forumImagePreviewBox.addEventListener('click', (e) => {
+          if (e.target.classList.contains('forum-image-preview-remove')) {
+            const idx = parseInt(e.target.dataset.idx, 10);
+            selectedForumImages.splice(idx, 1);
+            renderForumImagePreview();
+          }
+        });
+      }
+
       // Envoi AJAX du message
       if (form) {
         form.addEventListener('submit', async (e) => {
           e.preventDefault();
 
           const contenu = textarea.value.trim();
-          if (!contenu) return;
+          if (!contenu && selectedForumImages.length === 0) return;
 
           const formData = new FormData();
           formData.append('ajax', '1');
@@ -603,6 +751,7 @@ $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
           if (parentId) formData.append('parent_id', parentId);
           const csrfEl = document.querySelector('input[name="csrf_token"]');
           if (csrfEl) formData.append('csrf_token', csrfEl.value);
+          selectedForumImages.forEach(file => formData.append('images[]', file));
 
           try {
             const response = await fetch(window.location.href, {
@@ -625,8 +774,11 @@ $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
             if (data.success) {
               // Ajouter le message au DOM
               addMessageToDOM(data.message);
+              knownMessageIds.add(data.message.message_id);
               textarea.value = '';
               adjustHeight(textarea);
+              selectedForumImages = [];
+              renderForumImagePreview();
 
               // Auto-marquer les notifs de ce topic comme lues (important quand on est sur le même topic)
               const topic_id = <?php echo (int) $topic_id; ?>;
@@ -655,6 +807,68 @@ $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
         '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
       );
     }
+
+    // ── Gestion des images jointes au message (max 2, 5 Mo chacune) ──
+    let selectedForumImages = []; // File[]
+
+    function addForumImageFile(file) {
+      if (!file.type || !file.type.startsWith('image/')) return;
+      if (selectedForumImages.length >= 2) {
+        showForumUploadError('Maximum 2 images par message.');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        showForumUploadError('Image trop volumineuse (max 5 Mo).');
+        return;
+      }
+      selectedForumImages.push(file);
+      renderForumImagePreview();
+    }
+
+    function renderForumImagePreview() {
+      const box = document.getElementById('forum-image-preview');
+      if (!box) return;
+      box.innerHTML = '';
+      if (selectedForumImages.length === 0) {
+        box.style.display = 'none';
+        return;
+      }
+      box.style.display = 'flex';
+      selectedForumImages.forEach((file, idx) => {
+        const url = URL.createObjectURL(file);
+        const item = document.createElement('div');
+        item.className = 'forum-image-preview-item';
+        item.innerHTML = `<img src="${url}" alt="Aperçu"><button type="button" class="forum-image-preview-remove" data-idx="${idx}">✕</button>`;
+        box.appendChild(item);
+      });
+    }
+
+    function showForumUploadError(msg) {
+      const box = document.getElementById('forum-image-preview');
+      if (!box) return;
+      box.style.display = 'flex';
+      const err = document.createElement('div');
+      err.className = 'forum-upload-error';
+      err.textContent = msg;
+      box.appendChild(err);
+      setTimeout(() => err.remove(), 3000);
+    }
+
+    // ── Modale d'agrandissement des images jointes aux messages ──
+    function openForumImageModal(src) {
+      const modal = document.getElementById('forumImageModal');
+      document.getElementById('forumModalImage').src = src;
+      modal.style.display = 'block';
+    }
+
+    function closeForumImageModal() {
+      document.getElementById('forumImageModal').style.display = 'none';
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeForumImageModal();
+    });
+
     
     function setReplyTarget(messageId, authorName, previewText) {
       document.getElementById('reply-parent-id').value = messageId;
@@ -704,6 +918,20 @@ $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
           ? `<button type="button" class="btn-delete-tiny btn-action-hover" onclick="deleteMessage(${message.message_id})">🗑️</button>`
           : '';
 
+      // Images jointes — affichées sous la référence de réponse, au-dessus du texte
+      let imagesHtml = '';
+      if (message.images && message.images.length > 0) {
+          const imgsMarkup = message.images.map(img => {
+              const safeSrc = escapeHtml(img).replace(/'/g, "\\'");
+              return `<img src="${escapeHtml(img)}" alt="Image jointe" class="bubble-img" onclick="openForumImageModal('${safeSrc}')">`;
+          }).join('');
+          imagesHtml = `<div class="bubble-images bubble-images-${message.images.length}">${imgsMarkup}</div>`;
+      }
+
+      const contentHtml = message.contenu
+          ? `<div class="bubble-content">${linkify(escapeHtml(message.contenu))}</div>`
+          : '';
+
       const wrapper = document.createElement('div');
       wrapper.className = `bubble-wrapper ${isOwn ? 'own' : 'other'}`;
       wrapper.innerHTML = `
@@ -711,7 +939,8 @@ $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
               ${replyBtn}
               <div class="message-bubble${message.parent_id ? ' is-reply' : ''}" data-message-id="${message.message_id}" data-timestamp="${message.timestamp}">
                   ${parentHtml}
-                  <div class="bubble-content">${linkify(escapeHtml(message.contenu))}</div>
+                  ${imagesHtml}
+                  ${contentHtml}
               </div>
               ${deleteBtn}
           </div>`;
@@ -856,12 +1085,13 @@ $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 // Message supprimé - le retirer du DOM avec animation
                 const bubble = document.querySelector(`.message-bubble[data-message-id="${id}"]`);
                 if (bubble) {
-                  bubble.style.animation = 'fadeOut 0.3s ease';
+                  const wrapper = bubble.closest('.bubble-wrapper') ?? bubble;
+                  const group = wrapper.closest('.message-group');
+                  wrapper.style.animation = 'fadeOut 0.3s ease';
                   setTimeout(() => {
-                    const group = bubble.closest('.message-group');
-                    bubble.remove();
-                    // Si le groupe est vide, le supprimer aussi
-                    if (group && group.querySelector('.group-messages').children.length === 0) {
+                    wrapper.remove();
+                    // Si le groupe n'a plus aucune bulle, le supprimer aussi (header inclus)
+                    if (group && !group.querySelector('.bubble-wrapper')) {
                       group.remove();
                     }
                   }, 300);

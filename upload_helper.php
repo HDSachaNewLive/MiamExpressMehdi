@@ -114,3 +114,102 @@ function fh_handle_uploaded_field(string $fieldName, string $destDir, int $maxBy
     $res = fh_handle_image_upload($field, $destDir, $maxBytes, $allowedMime);
     return ['success' => $res['success'], 'results' => [$res], 'error' => $res['error']];
 }
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  IMAGES DU FORUM (forum_topic.php) : paste presse-papiers + upload manuel
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Traite une image jointe à un message du forum : valide taille/type,
+ * compresse et redimensionne (sauf GIF, jamais recompressé pour préserver
+ * l'animation), puis déplace le fichier vers $destDir.
+ *
+ * Retourne ['success' => bool, 'filename' => string|null, 'error' => string|null]
+ */
+function fh_handle_forum_image_upload(array $file, string $destDir, int $maxBytes = 5 * 1024 * 1024): array {
+    if (session_status() === PHP_SESSION_NONE) session_start();
+
+    if (!isset($file['error']) || $file['error'] !== UPLOAD_ERR_OK) {
+        return ['success' => false, 'filename' => null, 'error' => 'Erreur lors de l\'upload.'];
+    }
+
+    if ($file['size'] > $maxBytes) {
+        return ['success' => false, 'filename' => null, 'error' => 'Image trop volumineuse (max 5 Mo).'];
+    }
+
+    if (!is_dir($destDir) || !is_writable($destDir)) {
+        return ['success' => false, 'filename' => null, 'error' => 'Répertoire de destination non accessible.'];
+    }
+
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mime = finfo_file($finfo, $file['tmp_name']);
+    finfo_close($finfo);
+
+    $allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!in_array($mime, $allowed, true)) {
+        return ['success' => false, 'filename' => null, 'error' => 'Format non supporté (jpg, png, gif, webp uniquement).'];
+    }
+
+    $basename = bin2hex(random_bytes(16));
+
+    // GIF : jamais recompressé (perte de l'animation sinon), juste stocké tel quel
+    if ($mime === 'image/gif') {
+        $filename = $basename . '.gif';
+        $target = rtrim($destDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $filename;
+        if (!move_uploaded_file($file['tmp_name'], $target)) {
+            return ['success' => false, 'filename' => null, 'error' => 'Impossible de déplacer le fichier.'];
+        }
+        @chmod($target, 0644);
+        return ['success' => true, 'filename' => $filename, 'error' => null];
+    }
+
+    // JPEG / PNG / WEBP : recompression + redimensionnement pour limiter le poids
+    $src = match ($mime) {
+        'image/jpeg' => @imagecreatefromjpeg($file['tmp_name']),
+        'image/png'  => @imagecreatefrompng($file['tmp_name']),
+        'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($file['tmp_name']) : false,
+        default      => false,
+    };
+
+    if (!$src) {
+        return ['success' => false, 'filename' => null, 'error' => 'Image corrompue ou illisible.'];
+    }
+
+    $origW = imagesx($src);
+    $origH = imagesy($src);
+    $maxDim = 1600;
+
+    if ($origW > $maxDim || $origH > $maxDim) {
+        $ratio = min($maxDim / $origW, $maxDim / $origH);
+        $newW = (int) round($origW * $ratio);
+        $newH = (int) round($origH * $ratio);
+        $resized = imagecreatetruecolor($newW, $newH);
+        if ($mime === 'image/png') {
+            imagealphablending($resized, false);
+            imagesavealpha($resized, true);
+        }
+        imagecopyresampled($resized, $src, 0, 0, 0, 0, $newW, $newH, $origW, $origH);
+        imagedestroy($src);
+        $src = $resized;
+    }
+
+    $ext = ($mime === 'image/png') ? 'png' : (($mime === 'image/webp') ? 'webp' : 'jpg');
+    $filename = $basename . '.' . $ext;
+    $target = rtrim($destDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $filename;
+
+    $ok = match ($mime) {
+        'image/png'  => imagepng($src, $target, 6),
+        'image/webp' => imagewebp($src, $target, 78),
+        default      => imagejpeg($src, $target, 78),
+    };
+
+    imagedestroy($src);
+
+    if (!$ok) {
+        return ['success' => false, 'filename' => null, 'error' => 'Échec de la compression de l\'image.'];
+    }
+
+    @chmod($target, 0644);
+    return ['success' => true, 'filename' => $filename, 'error' => null];
+}

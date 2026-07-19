@@ -154,11 +154,12 @@ if ($coupon_applied) {
 
 $final_total = max(0, $total - $discount_amount);
 
-// Adresse utilisateur pour préremplir checkout
-$stmt = $conn->prepare("SELECT adresse_livraison FROM users WHERE user_id = ?");
+// Adresse + solde utilisateur pour préremplir checkout
+$stmt = $conn->prepare("SELECT adresse_livraison, solde FROM users WHERE user_id = ?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch();
 $adresse_pref = $user['adresse_livraison'] ?? '';
+$solde_utilisateur = (float)($user['solde'] ?? 0);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -267,6 +268,12 @@ $adresse_pref = $user['adresse_livraison'] ?? '';
           <span id="summary-total"><?= number_format($final_total,2) ?> €</span>
         </div>
       </div>
+
+      <?php if ($solde_utilisateur > 0): ?>
+      <div class="solde-checkout-box">
+        <span>💰 Tu as <strong><?= number_format($solde_utilisateur, 2) ?> €</strong> de solde FoodHub. Tu pourras choisir combien en utiliser à l'étape suivante.</span>
+      </div>
+      <?php endif; ?>
 
       <h4>Adresse de livraison</h4>
       <form method="post" action="checkout.php" id="checkout-form">
@@ -569,6 +576,18 @@ h4 {
   from { opacity: 0; transform: translate(-50%, -10px); }
   to { opacity: 1; transform: translate(-50%, 0); }
 }
+/* Box info solde */
+.solde-checkout-box {
+  background: rgba(76, 175, 80, 0.15);
+  border-left: 4px solid #4CAF50;
+  border-radius: 0.8rem;
+  padding: 1rem 1.2rem;
+  margin: 1.2rem 0;
+  color: #2e7d32;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
 /* btn vider panier */
 .btn-clear-cart {
   padding: 0.7rem 1.2rem;
