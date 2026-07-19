@@ -19,6 +19,20 @@ function truncate_words(string $text, int $max_words = 6): string {
     if (count($words) <= $max_words) return $text;
     return implode(' ', array_slice($words, 0, $max_words)) . '…';
 }
+
+// Texte d'aperçu pour un message référencé : le contenu tronqué,
+// ou "📷 Image" / "📷 X images" si le message ne contient QUE des images.
+function forum_preview_text(string $contenu, int $nb_images): string {
+    $contenu = trim($contenu);
+    if ($contenu !== '') {
+        return truncate_words($contenu);
+    }
+    if ($nb_images > 0) {
+        return $nb_images > 1 ? "📷 {$nb_images} images" : "📷 Image";
+    }
+    return '';
+}
+
 /**
  * Supprime du disque les fichiers images liées à un message forum.
  * Les lignes en BDD partent ensuite via ON DELETE CASCADE.
@@ -202,8 +216,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax']) && isset($_PO
       $stmt_prev->execute([$parent_id]);
       $prev_row = $stmt_prev->fetch(PDO::FETCH_ASSOC);
       if ($prev_row) {
+          $stmt_prev_img = $conn->prepare("SELECT COUNT(*) FROM forum_message_images WHERE message_id = ?");
+          $stmt_prev_img->execute([$parent_id]);
+          $nb_prev_images = (int)$stmt_prev_img->fetchColumn();
           $parent_preview = [
-              'contenu' => truncate_words($prev_row['contenu']),
+              'contenu' => forum_preview_text($prev_row['contenu'], $nb_prev_images),
               'nom_user' => $prev_row['nom_user']
           ];
       }
@@ -212,7 +229,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax']) && isset($_PO
   echo json_encode([
       'success' => true,
       'message' => [
-        'message_id'     => $message_id,
+        'message_id'     => (int) $message_id,
         'contenu'        => $contenu,
         'nom_user'       => $user['nom_user'] ?? 'Utilisateur supprimé',
         'timestamp'      => time(),
@@ -291,7 +308,12 @@ if (isset($_GET['poll']) && $_GET['poll'] === '1' && isset($_GET['last_message_i
         $stmt_p = $conn->prepare("SELECT contenu, COALESCE(u.nom_user,'Utilisateur supprimé') AS nom_user FROM forum_messages fm LEFT JOIN users u ON fm.user_id = u.user_id WHERE fm.message_id = ?");
         $stmt_p->execute([$msg['parent_id']]);
         $p = $stmt_p->fetch(PDO::FETCH_ASSOC);
-        if ($p) $parent_preview = ['contenu' => truncate_words($p['contenu']), 'nom_user' => $p['nom_user']];
+        if ($p) {
+            $stmt_p_img = $conn->prepare("SELECT COUNT(*) FROM forum_message_images WHERE message_id = ?");
+            $stmt_p_img->execute([$msg['parent_id']]);
+            $nb_p_images = (int)$stmt_p_img->fetchColumn();
+            $parent_preview = ['contenu' => forum_preview_text($p['contenu'], $nb_p_images), 'nom_user' => $p['nom_user']];
+        }
     }
 
     // Images jointes à ce message
@@ -556,15 +578,15 @@ foreach ($stmt_imgs_all->fetchAll(PDO::FETCH_ASSOC) as $row_img) {
                 <div class="bubble-with-actions">
                   <?php if (!$is_own && $connected && !$topic['verrouille']): ?>
                     <button type="button" class="btn-reply-tiny btn-action-hover"
-                      onclick="setReplyTarget(<?= $msg['message_id'] ?>, <?= htmlspecialchars(json_encode($msg['auteur_supprime'] ? '[Supprimé]' : $msg['nom_user']), ENT_QUOTES) ?>, <?= htmlspecialchars(json_encode(mb_substr($msg['contenu'], 0, 80)), ENT_QUOTES) ?>)">↩</button>
+                      onclick="setReplyTarget(<?= $msg['message_id'] ?>, <?= htmlspecialchars(json_encode($msg['auteur_supprime'] ? '[Supprimé]' : $msg['nom_user']), ENT_QUOTES) ?>, <?= htmlspecialchars(json_encode(forum_preview_text(mb_substr($msg['contenu'], 0, 80), count($imagesByMessage[(int)$msg['message_id']] ?? []))), ENT_QUOTES) ?>)">↩</button>
                   <?php endif; ?>
                   <div class="message-bubble" data-message-id="<?= $msg['message_id'] ?>"
                     data-timestamp="<?= $current_time ?>">
-                    <?php if (!empty($msg['parent_contenu'])): ?>
+                    <?php if (!empty($msg['parent_id'])): ?>
                       <div class="bubble-reply-preview-outer">
                         <div class="bubble-reply-preview-inner">
                           <span class="reply-preview-author"><?= htmlspecialchars($msg['parent_nom_user']) ?></span>
-                          <span class="reply-preview-text"><?= htmlspecialchars(truncate_words($msg['parent_contenu'])) ?></span>
+                          <span class="reply-preview-text"><?= htmlspecialchars(forum_preview_text($msg['parent_contenu'] ?? '', count($imagesByMessage[(int)$msg['parent_id']] ?? []))) ?></span>
                         </div>
                       </div>
                     <?php endif; ?>
@@ -629,7 +651,9 @@ foreach ($stmt_imgs_all->fetchAll(PDO::FETCH_ASSOC) as $row_img) {
               <input type="hidden" name="parent_id" id="reply-parent-id" value="">
               <textarea maxlength="2000" name="contenu" id="reply-content" placeholder="Écris un message... (max 2000 caractères)"></textarea>
               <input type="file" id="forum-image-input" accept="image/*" multiple hidden>
-              <button type="button" class="btn-add-image" id="btn-add-image" title="Ajouter une image (max 2, 5 Mo chacune)">+</button>
+              <button type="button" class="btn-add-image" id="btn-add-image" title="Ajouter une image (max 2, 5 Mo chacune)">
+                <img style="width:fit-content;" src="assets/upload_img.svg">
+              </button>
               <button type="submit" class="btn-send">Envoyer</button>
             </form>
           </div>
@@ -727,11 +751,11 @@ foreach ($stmt_imgs_all->fetchAll(PDO::FETCH_ASSOC) as $row_img) {
 
       if (forumImagePreviewBox) {
         forumImagePreviewBox.addEventListener('click', (e) => {
-          if (e.target.classList.contains('forum-image-preview-remove')) {
-            const idx = parseInt(e.target.dataset.idx, 10);
-            selectedForumImages.splice(idx, 1);
-            renderForumImagePreview();
-          }
+          const item = e.target.closest('.forum-image-preview-item');
+          if (!item) return;
+          const idx = parseInt(item.dataset.idx, 10);
+          selectedForumImages.splice(idx, 1);
+          renderForumImagePreview();
         });
       }
 
@@ -774,7 +798,8 @@ foreach ($stmt_imgs_all->fetchAll(PDO::FETCH_ASSOC) as $row_img) {
             if (data.success) {
               // Ajouter le message au DOM
               addMessageToDOM(data.message);
-              knownMessageIds.add(data.message.message_id);
+              knownMessageIds.add(String(data.message.message_id));
+              if (data.message.message_id > lastMessageId) lastMessageId = data.message.message_id;
               textarea.value = '';
               adjustHeight(textarea);
               selectedForumImages = [];
@@ -838,7 +863,9 @@ foreach ($stmt_imgs_all->fetchAll(PDO::FETCH_ASSOC) as $row_img) {
         const url = URL.createObjectURL(file);
         const item = document.createElement('div');
         item.className = 'forum-image-preview-item';
-        item.innerHTML = `<img src="${url}" alt="Aperçu"><button type="button" class="forum-image-preview-remove" data-idx="${idx}">✕</button>`;
+        item.dataset.idx = idx;
+        item.title = 'Supprimer';
+        item.innerHTML = `<img src="${url}" alt="Aperçu"><div class="forum-image-preview-overlay">Supprimer</div>`;
         box.appendChild(item);
       });
     }
@@ -851,14 +878,20 @@ foreach ($stmt_imgs_all->fetchAll(PDO::FETCH_ASSOC) as $row_img) {
       err.className = 'forum-upload-error';
       err.textContent = msg;
       box.appendChild(err);
-      setTimeout(() => err.remove(), 3000);
+      setTimeout(() => {
+      err.remove();
+      // Si plus aucune image en attente ni erreur, on masque le conteneur
+      if (selectedForumImages.length === 0 && box.children.length === 0) {
+        box.style.display = 'none';
+      }
+      }, 3000);
     }
 
     // ── Modale d'agrandissement des images jointes aux messages ──
     function openForumImageModal(src) {
       const modal = document.getElementById('forumImageModal');
       document.getElementById('forumModalImage').src = src;
-      modal.style.display = 'block';
+      modal.style.display = 'flex';
     }
 
     function closeForumImageModal() {
@@ -889,6 +922,14 @@ foreach ($stmt_imgs_all->fetchAll(PDO::FETCH_ASSOC) as $row_img) {
       return words.slice(0, maxWords).join(' ') + '…';
     }
 
+    function forumPreviewText(contenu, images) {
+      const text = (contenu || '').trim();
+      if (text) return text;
+      const n = images ? images.length : 0;
+      if (n > 0) return n > 1 ? `📷 ${n} images` : '📷 Image';
+      return '';
+    }
+
     function addMessageToDOM(message) {
       const container = document.getElementById('messages-container');
       const lastGroup = container.querySelector('.message-group:last-child');
@@ -910,7 +951,7 @@ foreach ($stmt_imgs_all->fetchAll(PDO::FETCH_ASSOC) as $row_img) {
 
       // Bouton reply (jamais sur nos propres messages)
       const replyBtn = (!isOwn && <?php echo json_encode($connected); ?> && !<?php echo json_encode((bool)$topic['verrouille']); ?>)
-          ? `<button type="button" class="btn-reply-tiny btn-action-hover" onclick="setReplyTarget(${message.message_id}, '${escapeHtml(message.nom_user).replace(/'/g,"\\'")}', '${escapeHtml(message.contenu).substring(0,80).replace(/'/g,"\\'")}')">↩</button>`
+          ? `<button type="button" class="btn-reply-tiny btn-action-hover" onclick="setReplyTarget(${message.message_id}, '${escapeHtml(message.nom_user).replace(/'/g,"\\'")}', '${escapeHtml(forumPreviewText(message.contenu, message.images)).substring(0,80).replace(/'/g,"\\'")}')">↩</button>`
           : '';
 
       // Bouton delete
@@ -1079,9 +1120,9 @@ foreach ($stmt_imgs_all->fetchAll(PDO::FETCH_ASSOC) as $row_img) {
 
           // ── Détecter les messages supprimés ──
           if (Array.isArray(data.all_message_ids)) {
-            const serverIds = new Set(data.all_message_ids);
+            const serverIds = new Set(data.all_message_ids.map(String));
             for (let id of knownMessageIds) {
-              if (!serverIds.has(id)) {
+              if (!serverIds.has(String(id))) {
                 // Message supprimé - le retirer du DOM avec animation
                 const bubble = document.querySelector(`.message-bubble[data-message-id="${id}"]`);
                 if (bubble) {
@@ -1109,7 +1150,7 @@ foreach ($stmt_imgs_all->fetchAll(PDO::FETCH_ASSOC) as $row_img) {
             data.messages.forEach(msg => {
               if (!document.querySelector(`.message-bubble[data-message-id="${msg.message_id}"]`)) {
                 addMessageToDOM(msg);
-                knownMessageIds.add(msg.message_id);
+                knownMessageIds.add(String(msg.message_id));
               }
               if (msg.message_id > lastMessageId) lastMessageId = msg.message_id;
             });
@@ -1128,7 +1169,7 @@ foreach ($stmt_imgs_all->fetchAll(PDO::FETCH_ASSOC) as $row_img) {
     document.addEventListener('DOMContentLoaded', () => {
       // Initialiser knownMessageIds avec les IDs des messages actuels affichés
       document.querySelectorAll('.message-bubble[data-message-id]').forEach(bubble => {
-        knownMessageIds.add(parseInt(bubble.dataset.messageId));
+        knownMessageIds.add(bubble.dataset.messageId);
       });
       
       // Marquer automatiquement les notifs de ce topic comme lues

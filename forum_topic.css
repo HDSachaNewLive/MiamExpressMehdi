@@ -264,21 +264,6 @@ span[id="profil"] {
     font-size: 0.7rem;
   }
   
-  .btn-delete-tiny {
-    background: rgba(255, 255, 255, 0.2);
-    border: none;
-    padding: 0.3rem 0.5rem;
-    border-radius: 0.4rem;
-    cursor: pointer;
-    font-size: 0.9rem;
-    transition: all 0.2s ease;
-  }
-  
-  .btn-delete-tiny:hover {
-    background: rgba(244, 67, 54, 0.3);
-    transform: scale(1.06);
-  }
-  
   .hover-time {
     position: absolute;
     top: 1px;
@@ -316,7 +301,7 @@ span[id="profil"] {
   
   .reply-form {
     display:flex;
-    gap: 0.8rem;
+    gap: 0.3rem;
     align-items: center;
   }
   
@@ -349,13 +334,17 @@ span[id="profil"] {
     color: white;
     border: none;
     border-radius: 0.6rem;
-    padding: 0.8rem 1rem;
+    padding: 0 1.1rem;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
     font-weight: 600;
     font-size: 1rem;
     transition: all 0.2s ease;
     flex-shrink: 0;
-    height: fit-content;
+    box-sizing: border-box;
   }
   
   .btn-send:hover {
@@ -440,7 +429,7 @@ span[id="profil"] {
 
 .bubble-with-actions {
     display: inline-flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.3rem;
 }
 
@@ -483,13 +472,13 @@ span[id="profil"] {
 .btn-reply-tiny {
     background: rgba(255, 255, 255, 0.2);
     border: none;
-    padding: 0.35rem 0.6rem;
+    padding: 0.2rem 0.65rem;
     border-radius: 0.4rem;
     cursor: pointer;
     font-size: 1rem;
-    color: inherit;
-    line-height: 1;
+    margin-top: 2px;
     transition: all 0.2s ease;
+    color:rgb(10, 10, 10);
 }
 
 .btn-reply-tiny:hover {
@@ -505,11 +494,13 @@ span[id="profil"] {
     border-radius: 0.4rem;
     cursor: pointer;
     font-size: 0.9rem;
+    margin-top: 2px;
     transition: all 0.2s ease;
 }
 
 .btn-delete-tiny:hover {
     background: rgba(244, 67, 54, 0.3);
+    transform: scale(1.06);
 }
 
 /* ── Encart de réponse — intégré dans la bulle ───────────── */
@@ -638,38 +629,45 @@ span[id="profil"] {
     background: rgba(243, 93, 93, 0.637);
     transform: scale(1.04);
 }
-/* ═══════════════════════════════════════════════════════════
-   IMAGES JOINTES AUX MESSAGES DU FORUM
-   ═══════════════════════════════════════════════════════════ */
+/* IMAGES JOINTES AUX MESSAGES DU FORUM */
 
-/* Bouton "+" pour ajouter une image manuellement — rotation 90° au survol */
+/* Bouton "+" pour ajouter une image manuellement — même hauteur que le
+   bouton Envoyer, juste à sa gauche. Seule l'icône tourne au survol. */
 .btn-add-image {
   flex-shrink: 0;
-  width: 34px;
-  height: 34px;
-  border: 1px solid rgba(255, 107, 107, 0.25);
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(255, 107, 107, 0.2);
   border-radius: 0.6rem;
   background: rgba(255, 255, 255, 0.35);
   color: #ff6b6b;
-  font-size: 1.05rem;
-  font-weight: 700;
-  line-height: 1;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.3s ease, background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  box-sizing: border-box;
+  transition: all 0.25s ease;
 }
 
 .btn-add-image:hover {
-  transform: rotate(90deg);
-  background: rgba(255, 107, 107, 0.15);
-  border-color: #ff6b6b;
-  color: #e05555;
+  background: rgba(255, 107, 107, 0.14);
+  border-color: rgba(255, 107, 107, 0.4);
 }
 
 .btn-add-image:active {
-  transform: rotate(90deg) scale(0.9);
+  background: rgba(255, 107, 107, 0.22);
+}
+
+.plus-icon {
+  display: inline-block;
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1;
+  transition: transform 0.3s ease;
+}
+
+.btn-add-image:hover .plus-icon {
+  transform: rotate(90deg);
 }
 
 /* Zone d'aperçu des images sélectionnées avant envoi */
@@ -677,28 +675,29 @@ span[id="profil"] {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.5rem;
   padding: 0.3rem 0.2rem;
-  max-height: 52px;
+  max-height: 72px;
   overflow: hidden;
   box-sizing: border-box;
 }
 
 .forum-image-preview-item {
   position: relative;
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
-  min-height: 40px;
-  max-width: 40px;
-  max-height: 40px;
-  border-radius: 0.5rem;
+  width: 60px;
+  height: 60px;
+  min-width: 60px;
+  min-height: 60px;
+  max-width: 60px;
+  max-height: 60px;
+  border-radius: 0.6rem;
   overflow: hidden;
   border: 1px solid rgba(255, 107, 107, 0.35);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   animation: fadeIn 0.25s ease;
   flex-shrink: 0;
   box-sizing: border-box;
+  cursor: pointer;
 }
 
 .forum-image-preview-item img {
@@ -708,29 +707,26 @@ span[id="profil"] {
   object-fit: cover;
 }
 
-.forum-image-preview-remove {
+/* Overlay transparent qui s'assombrit au survol et affiche "Supprimer" —
+   toute la vignette agit comme bouton de suppression */
+.forum-image-preview-overlay {
   position: absolute;
-  top: 1px;
-  right: 1px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.65);
-  color: #fff;
-  border: none;
-  font-size: 0.55rem;
-  line-height: 1;
-  cursor: pointer;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
-  padding: 0;
+  text-align: center;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: rgba(40, 40, 40, 0);
+  opacity: 0;
+  transition: background 0.2s ease, opacity 0.2s ease;
 }
 
-.forum-image-preview-remove:hover {
-  background: rgba(244, 67, 54, 0.9);
-  transform: scale(1.1);
+.forum-image-preview-item:hover .forum-image-preview-overlay {
+  background: rgba(40, 40, 40, 0.6);
+  opacity: 1;
 }
 
 .forum-upload-error {
@@ -747,10 +743,14 @@ span[id="profil"] {
 .bubble-images {
   display: grid;
   gap: 4px;
-  margin-bottom: 0.4rem;
-  border-radius: 0.7rem;
+  border-radius: 0.6rem;
   overflow: hidden;
-  max-width: 220px;
+  max-width: 160px;
+}
+
+.bubble-images + .bubble-content,
+.bubble-images + .bubble-footer {
+  margin-top: 0.4rem;
 }
 
 .bubble-images-1 {
@@ -767,24 +767,24 @@ span[id="profil"] {
 img.bubble-img {
   display: block !important;
   width: 100% !important;
-  max-width: 220px !important;
-  height: 100px !important;
-  max-height: 100px !important;
+  max-width: 160px !important;
+  height: 70px !important;
+  max-height: 70px !important;
   object-fit: cover !important;
   object-position: center !important;
-  border-radius: 0.6rem;
+  border-radius: 0.5rem;
   margin: 0;
-  cursor: pointer;
+  cursor: zoom-in;
   transition: filter 0.2s ease;
 }
 
 .bubble-images-1 img.bubble-img {
-  height: 140px !important;
-  max-height: 140px !important;
+  height: 100px !important;
+  max-height: 100px !important;
 }
 
 .bubble-img:hover {
-  filter: brightness(0.9);
+  filter: brightness(0.88);
 }
 
 /* Modale d'agrandissement d'image (même logique que menu.php) */
@@ -792,32 +792,33 @@ img.bubble-img {
   display: none;
   position: fixed;
   z-index: 9999;
-  padding-top: 60px;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  overflow: auto;
-  background-color: rgba(0, 0, 0, 0.9);
-  backdrop-filter: blur(10px);
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background-color: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
 }
 
 .modal-content {
-  margin: auto;
   display: block;
-  width: 80%;
-  max-width: 900px;
+  max-width: 92vw;
+  max-height: 88vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
   border-radius: 0.8rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
   animation: zoomModal 0.3s ease;
 }
 
 @keyframes zoomModal {
-  from { transform: scale(0.7); }
-  to   { transform: scale(1); }
+  from { transform: scale(0.7); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
 }
 
 .modal .close {
-  position: absolute;
+  position: fixed;
   top: 15px;
   right: 35px;
   color: #f1f1f1;
@@ -825,6 +826,7 @@ img.bubble-img {
   font-weight: bold;
   transition: 0.3s;
   cursor: pointer;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 
 .modal .close:hover,

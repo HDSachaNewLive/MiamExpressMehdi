@@ -75,7 +75,7 @@ unset($h);
             <span class="solde-label">Solde actuel</span>
             <div class="solde-amount-wrap">
                 <div class="solde-amount-viewport" id="solde-affiche" data-value="<?= number_format($solde_actuel, 2, '.', '') ?>">
-                    <span class="solde-amount"><?= number_format($solde_actuel, 2, '.', '') ?></span>
+                    <span class="solde-amount-anchor" aria-hidden="true"><?= number_format($solde_actuel, 2, '.', '') ?></span><span class="solde-amount"><?= number_format($solde_actuel, 2, '.', '') ?></span>
                 </div>
                 <span class="solde-devise">€</span>
             </div>
@@ -162,8 +162,7 @@ unset($h);
 
                 <div class="form-group">
                     <label>Montant (€)</label>
-                    <input type="number" id="cadeau-montant" name="montant" 
-                    min="1" max="500" max-length="3" step="0.01" placeholder="Ex: 10" required>
+                    <input type="number" id="cadeau-montant" name="montant" min="1" max="500" step="0.01" placeholder="Ex: 10">
                 </div>
 
                 <div class="form-group">
@@ -299,15 +298,23 @@ unset($h);
         if (viewport.dataset.value === nouvelleStr) return; // rien à animer
         viewport.dataset.value = nouvelleStr;
 
+        const ancre  = viewport.querySelector('.solde-amount-anchor');
         const ancien = viewport.querySelector('.solde-amount');
+
         if (!ancien) {
-            viewport.innerHTML = `<span class="solde-amount">${nouvelleStr}</span>`;
+            const s = document.createElement('span');
+            s.className = 'solde-amount';
+            s.textContent = nouvelleStr;
+            viewport.appendChild(s);
+            if (ancre) ancre.textContent = nouvelleStr;
             return;
         }
 
-        // Figer la largeur actuelle pendant la transition (les éléments animés
-        // passent en position absolute et ne contribuent plus à la largeur du parent)
-        viewport.style.width = viewport.offsetWidth + 'px';
+        // Verrouiller la vitre sur sa largeur ACTUELLE : aucun saut visuel à cet instant,
+        // puisque c'est exactement la largeur déjà affichée (la hauteur, elle, reste
+        // pilotée en permanence par l'ancre, jamais besoin d'y toucher).
+        const largeurActuelle = viewport.offsetWidth;
+        viewport.style.width = largeurActuelle + 'px';
 
         const nouveau = document.createElement('span');
         nouveau.className = 'solde-amount solde-incoming';
@@ -316,16 +323,26 @@ unset($h);
 
         ancien.classList.add('solde-leaving');
 
-        // Forcer un reflow pour garantir que la transition CSS se déclenche
+        // Forcer un reflow pour garantir que les transitions CSS se déclenchent
         void nouveau.offsetWidth;
 
-        nouveau.classList.remove('solde-incoming');
-        nouveau.classList.add('solde-settling');
+        nouveau.classList.remove('solde-incoming'); // -> état par défaut (translateY(0), opacity:1)
+
+        // Mettre à jour l'ancre : elle détermine la largeur naturelle cible. La vitre
+        // glisse ensuite en douceur vers cette largeur, en même temps que le glissement
+        // des chiffres, au lieu de sauter instantanément.
+        if (ancre) {
+            ancre.textContent = nouvelleStr;
+            const largeurCible = ancre.offsetWidth;
+            if (largeurCible !== largeurActuelle) {
+                viewport.style.width = largeurCible + 'px';
+            }
+        }
 
         setTimeout(() => {
             ancien.remove();
-            nouveau.classList.remove('solde-settling');
-            viewport.style.width = ''; // laisser l'auto-dimensionnement reprendre la main
+            // Laisser la largeur reprendre son dimensionnement naturel (piloté par l'ancre)
+            viewport.style.width = '';
         }, 600);
     }
 
@@ -538,18 +555,40 @@ unset($h);
     .solde-amount-viewport {
         position: relative;
         display: inline-block;
-        height: 1.25em;
-        line-height: 1.25em;
-        overflow-x: visible;
-        overflow-y: hidden;
-        vertical-align: top;
-    }
-
-    .solde-amount {
-        display: inline-block;
         font-size: clamp(2.4rem, 7vw, 3.2rem);
         font-weight: 700;
-        line-height: 1.25em;
+        line-height: 1.2;
+        vertical-align: top;
+        overflow: hidden;
+        transition: width 0.55s cubic-bezier(0.55, 0, 0.1, 1);
+        /* La taille (largeur ET hauteur) est entièrement pilotée par .solde-amount-anchor
+           ci-dessous, qui reste EN PERMANENCE dans le flux normal — jamais de risque de
+           rognage, à aucun moment, sans avoir à deviner ou mesurer quoi que ce soit. */
+    }
+
+    /* Ancre invisible, TOUJOURS en flux normal (jamais absolute, jamais retirée du DOM) :
+       - détermine en permanence la taille naturelle de la vitre (largeur + hauteur),
+       - fournit une ligne de base stable pour l'alignement du €.
+       Son contenu texte est tenu à jour avec le montant affiché à chaque animation. */
+    .solde-amount-anchor {
+        display: inline-block;
+        visibility: hidden;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Le montant visible est TOUJOURS en position absolute (dès sa création, y compris
+       au repos) : comme il ne bascule jamais entre "flux normal" et "absolute", il n'y a
+       plus aucun micro-décalage vertical lié au demi-interligne au démarrage/fin de
+       l'animation — c'était la cause du léger décalage observé. */
+    .solde-amount {
+        position: absolute;
+        left: 0;
+        top: 0;
+        display: inline-block;
+        font-size: inherit;
+        font-weight: inherit;
+        line-height: inherit;
         white-space: nowrap;
         font-variant-numeric: tabular-nums;
         background: linear-gradient(135deg, var(--accent, #ff6b6b), var(--accent2, #ff8c42));
@@ -557,6 +596,9 @@ unset($h);
         background-clip: text;
         -webkit-text-fill-color: transparent;
         color: transparent;
+        transform: translateY(0);
+        opacity: 1;
+        transition: transform 0.55s cubic-bezier(0.55, 0, 0.1, 1), opacity 0.5s ease;
     }
 
     .solde-devise {
@@ -575,23 +617,9 @@ unset($h);
     }
 
     /* ── Molette façon cadenas : l'ancien montant tombe, le nouveau vient d'en haut ── */
-    .solde-amount.solde-incoming,
-    .solde-amount.solde-settling,
-    .solde-amount.solde-leaving {
-        position: absolute;
-        left: 0;
-        top: 0;
-        transition: transform 0.55s cubic-bezier(0.55, 0, 0.1, 1), opacity 0.5s ease;
-    }
-
     .solde-amount.solde-incoming {
         transform: translateY(-100%);
         opacity: 0;
-    }
-
-    .solde-amount.solde-settling {
-        transform: translateY(0);
-        opacity: 1;
     }
 
     .solde-amount.solde-leaving {
@@ -696,7 +724,6 @@ unset($h);
         color: rgba(0, 0, 0, 0.65);
         font-size: 0.95rem;
         margin-bottom: 20px;
-        margin-top:-7px;
     }
 
     .form-cadeau .form-group {
