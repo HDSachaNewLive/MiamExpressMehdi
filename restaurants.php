@@ -1,6 +1,4 @@
 <?php
-ini_set('display_errors',1);
-error_reporting(E_ALL);
 // restaurants.php
 session_start();
 require_once 'db/config.php';
@@ -77,7 +75,7 @@ if ($connected) {
               u.user_id AS owner_id, 
               r.nom_restaurant,
               r.ouvert,
-              CASE WHEN f.favori_id IS NOT NULL THEN 1 ELSE 0 END as is_favorite
+              0 as is_favorite
       FROM restaurants r
       LEFT JOIN users u ON r.proprietaire_id = u.user_id
       WHERE r.verified = 1

@@ -1,5 +1,33 @@
 <?php
 // db/config.php
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/../logs/php_errors.log');
+error_reporting(E_ALL);
+
+// pour les exceptions non rattrapées sur d'autres pages
+set_exception_handler(function($e) {
+    error_log('[FoodHub] Exception non gérée : ' . $e->getMessage());
+    http_response_code(500);
+    if (!headers_sent()) {
+        header('Location: /404.php');
+    }
+    exit;
+});
+
+//pareil pour les exceptions PHP
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error !== null && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        error_log('[FoodHub] Erreur fatale : ' . $error['message'] . ' dans ' . $error['file'] . ' à la ligne ' . $error['line']);
+        if (!headers_sent()) {
+            http_response_code(500);
+            header('Location: /404.php');
+            exit;
+        }
+    }
+});
+
 require_once __DIR__ . '/../vendor/autoload.php';
 
 $servername = "mysql-foodhub-sio.alwaysdata.net";

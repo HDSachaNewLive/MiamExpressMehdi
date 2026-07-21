@@ -103,6 +103,8 @@ if (isset($_SESSION['user_id'])) {
     <a href="logout.php" class="logout">🚪 Déconnexion</a>
   <?php endif; ?>
     <?php if (!isset($_SESSION['user_id'])): ?>
+      <a href="apropos.php">🧭 À propos</a>
+      <a href="tos.php" style="margin-bottom: 35px;">✒️ Conditions de Service</a>
       <a href="index.php" class="logout"> ← Retour</a>
     <?php endif; ?>
 </div>
