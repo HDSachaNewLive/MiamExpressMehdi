@@ -5,6 +5,7 @@ require_once 'db/config.php';
 include 'vanta_freeze.php';
 require_once 'csrf_helper.php';
 require_once 'upload_helper.php';
+require_once 'detection_NSFW.php';
 if (!isset($_SESSION['user_id']) || ($_SESSION['type_compte'] ?? '') !== 'proprietaire') {
     header('Location: login.php');
     exit;
@@ -52,9 +53,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_restaurant']))
     $desc = trim($_POST['description_resto'] ?? '');
     $ouvert = isset($_POST['ouvert']) ? 1 : 0;
 
-    $upd = $conn->prepare("UPDATE restaurants SET nom_restaurant=?, adresse=?, latitude=?, longitude=?, categorie=?, description_resto=?, ouvert=? WHERE restaurant_id=?");
-    $upd->execute([$nom, $adresse, $latitude, $longitude, $categorie, $desc, $ouvert, $rid]);
-    $msg = "Restaurant mis à jour.";
+    // re-vérification du contenu à chaque modif du resto (empêche de valider un nom propre puis de le remplacer par un nom sensible) (merci à etowaru pour avoir trouvé l'oubli)
+    $plats_pour_check = [];
+    foreach ($plats as $p_check) {
+        $plats_pour_check[] = ['nom_plat' => $p_check['nom_plat'], 'description_plat' => $p_check['description_plat']];
+    }
+    $precheck = fh_verify_restaurant($nom, $desc, $adresse, $categorie, $plats_pour_check);
+
+    if ($precheck['score'] >= 20) {
+        $msg = "Modification refusée : le contenu ne respecte pas les règles de FoodHub. Vérifiez le nom, la description, les plats ou l'adresse.";
+    } else {
+        $upd = $conn->prepare("UPDATE restaurants SET nom_restaurant=?, adresse=?, latitude=?, longitude=?, categorie=?, description_resto=?, ouvert=? WHERE restaurant_id=?");
+        $upd->execute([$nom, $adresse, $latitude, $longitude, $categorie, $desc, $ouvert, $rid]);
+
+        if ($precheck['score'] >= 10) {
+            // si contenu limite on repasse le restaurant en attente de vérification admin
+            $conn->prepare("UPDATE restaurants SET verified = 0 WHERE restaurant_id = ?")->execute([$rid]);
+            $notifStmt = $conn->prepare("INSERT INTO notifications (user_id, type, restaurant_id, avis_id, message) VALUES (?, 'comment', ?, NULL, ?)");
+            $notifStmt->execute([1, $rid, "Restaurant modifié et signalé pour vérification : " . $nom . " ⚠️ [À vérifier — contenu signalé]"]);
+            $msg = "Restaurant mis à jour. ⚠️ Contenu signalé : le restaurant repasse en attente de validation par l'admin.";
+        } else {
+            $msg = "Restaurant mis à jour.";
+        }
+    }
 
     $check->execute([$rid, $owner_id]);
     $resto = $check->fetch();
@@ -87,26 +108,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_plat'])) {
     $type = in_array($_POST['plat_type'] ?? "", ["entree", "plat", "accompagnement", "boisson", "dessert", "sauce"])
             ? $_POST['plat_type'] : "plat";
 
-    // Gestion image du plat (sécurisé)
-    $image_path = null;
-    $upload_dir = 'uploads/plats/';
-    if (isset($_FILES['plat_image'])) {
-      if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
-      $uploadRes = fh_handle_uploaded_field('plat_image', $upload_dir, 5242880);
-      if ($uploadRes['success'] && !empty($uploadRes['results'][0]['success'])) {
-        $image_path = $upload_dir . $uploadRes['results'][0]['filename'];
-      } elseif (!empty($uploadRes['results'][0]['error'])) {
-        $msg = $uploadRes['results'][0]['error'] ?? $uploadRes['error'] ?? "Image invalide ou trop volumineuse (max 5MB).";
-      }
+    // vérification du contenu du plat avant UPDATE en BDD
+    $precheck_plat = fh_check_content($nom . ' ' . $desc);
+
+    if ($precheck_plat['score'] >= 20) {
+        $msg = "Plat refusé : le nom ou la description ne respecte pas les règles de FoodHub.";
+    } else {
+        // Gestion image du plat (sécurisé)
+        $image_path = null;
+        $upload_dir = 'uploads/plats/';
+        if (isset($_FILES['plat_image'])) {
+          if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+          $uploadRes = fh_handle_uploaded_field('plat_image', $upload_dir, 5242880);
+          if ($uploadRes['success'] && !empty($uploadRes['results'][0]['success'])) {
+            $image_path = $upload_dir . $uploadRes['results'][0]['filename'];
+          } elseif (!empty($uploadRes['results'][0]['error'])) {
+            $msg = $uploadRes['results'][0]['error'] ?? $uploadRes['error'] ?? "Image invalide ou trop volumineuse (max 5MB).";
+          }
+        }
+
+        $stmt = $conn->prepare("INSERT INTO plats (restaurant_id, nom_plat, description_plat, type_plat, prix, image_path) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$rid, $nom, $desc, $type, $prix, $image_path]);
+
+        if ($precheck_plat['score'] >= 10) {
+            $conn->prepare("UPDATE restaurants SET verified = 0 WHERE restaurant_id = ?")->execute([$rid]);
+            $notifStmt = $conn->prepare("INSERT INTO notifications (user_id, type, restaurant_id, avis_id, message) VALUES (?, 'comment', ?, NULL, ?)");
+            $notifStmt->execute([1, $rid, "Nouveau plat signalé pour vérification sur : " . $resto['nom_restaurant'] . " ⚠️ [À vérifier — contenu signalé]"]);
+            if (!$msg) $msg = "Plat ajouté avec succès. ⚠️ Contenu signalé, le restaurant repasse en attente de validation.";
+        } else {
+            if (!$msg) $msg = "Plat ajouté avec succès.";
+        }
+
+        $stmt = $conn->prepare("SELECT * FROM plats WHERE restaurant_id=?");
+        $stmt->execute([$rid]);
+        $plats = $stmt->fetchAll();
     }
-
-    $stmt = $conn->prepare("INSERT INTO plats (restaurant_id, nom_plat, description_plat, type_plat, prix, image_path) VALUES (?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$rid, $nom, $desc, $type, $prix, $image_path]);
-    if (!$msg) $msg = "Plat ajouté avec succès.";
-
-    $stmt = $conn->prepare("SELECT * FROM plats WHERE restaurant_id=?");
-    $stmt->execute([$rid]);
-    $plats = $stmt->fetchAll();
 }
 
 // modifier type d'un plat
