@@ -5,6 +5,11 @@ require_once 'db/config.php';
 require_once 'config_recaptcha.php';
 require_once __DIR__ . '/csrf_helper.php';
 
+if (isset($_SESSION['user_id'])) {
+    header('Location: home.php');
+    exit;
+}
+
 // Vérifier si la bdd contient des utilisateurs
 $stmt = $conn->query("SELECT COUNT(*) as nb_users FROM users");
 $nb_users = $stmt->fetchColumn();
