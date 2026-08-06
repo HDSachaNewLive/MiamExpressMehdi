@@ -10,7 +10,7 @@
 }
 @font-face {
   font-family: 'HSR';
-  src: url('https://raw.githubusercontent.com/HDSachaNewLive/polices-discord/b6235ae7a94601cdc54a11b065f75cd68de13a01/HSR.ttf') format('truetype');
+  src: "font/HSR.ttf" format('truetype');
   font-weight: normal;
   font-style: normal;
 }
