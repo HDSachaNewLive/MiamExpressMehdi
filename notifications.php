@@ -36,9 +36,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if ($action === "accept") {
       $conn->prepare("UPDATE restaurants SET verified = 1 WHERE restaurant_id = ?")
         ->execute([$rid]);
+      $stmtLog = $conn->prepare("INSERT INTO admin_actions (admin_id, target_user_id, target_type, target_id, action_type, raison) VALUES (?, ?, ?, ?, ?, ?)");
+      $stmtLog->execute([(int)$_SESSION['user_id'], 0, 'restaurant', $rid, 'activer', 'Validation du restaurant']);
     } elseif ($action === "refuse") {
       $conn->prepare("DELETE FROM plats WHERE restaurant_id = ?")->execute([$rid]);
       $conn->prepare("DELETE FROM restaurants WHERE restaurant_id = ?")->execute([$rid]);
+      $stmtLog = $conn->prepare("INSERT INTO admin_actions (admin_id, target_user_id, target_type, target_id, action_type, raison) VALUES (?, ?, ?, ?, ?, ?)");
+      $stmtLog->execute([(int)$_SESSION['user_id'], 0, 'restaurant', $rid, 'supprimer', 'Refus de vérification / suppression de restaurant']);
     }
     header("Location: notifications.php");
     exit();
@@ -332,6 +336,7 @@ $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 if (!empty($n["avis_id"]))
                   $href .= "#comment-" . (int) $n["avis_id"];
                 ?>
+                
                 <a class="btn" href="<?= $href ?>">👀 Voir</a>
               <?php endif; ?>
               <form method="post" style="margin:0;" onsubmit="return confirm('Supprimer cette notification ?');">
