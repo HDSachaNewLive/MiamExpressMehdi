@@ -17,11 +17,36 @@ if (!$user || $user['type_compte'] !== 'proprietaire') {
     exit;
 }
 
-// ID de tous les restaurants du proprio
-$stmt = $conn->prepare("SELECT restaurant_id FROM restaurants WHERE proprietaire_id = ?");
+// Tous les restaurants du proprio (sert au filtre ET à la vérif anti-IDOR)
+$stmt = $conn->prepare("SELECT restaurant_id, nom_restaurant FROM restaurants WHERE proprietaire_id = ? ORDER BY nom_restaurant ASC");
 $stmt->execute([$uid]);
-$restaurant_ids = array_column($stmt->fetchAll(), 'restaurant_id');
-if (empty($restaurant_ids)) $restaurant_ids = [0];
+$mes_restaurants = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$tous_les_ids = array_column($mes_restaurants, 'restaurant_id');
+if (empty($tous_les_ids)) $tous_les_ids = [0];
+
+/* ── Filtre restaurant (GET, lecture seule) ──
+   On ne fait confiance à $_GET['restaurant_id'] que s'il correspond
+   à un restaurant appartenant réellement au proprio connecté (anti-IDOR). */
+$restaurant_filtre = null;
+$restaurant_filtre_nom = null;
+if (isset($_GET['restaurant_id']) && $_GET['restaurant_id'] !== '' && $_GET['restaurant_id'] !== 'all') {
+    $requested_id = (int)$_GET['restaurant_id'];
+    if (in_array($requested_id, $tous_les_ids, true)) {
+        $restaurant_filtre = $requested_id;
+        foreach ($mes_restaurants as $r) {
+            if ((int)$r['restaurant_id'] === $requested_id) {
+                $restaurant_filtre_nom = $r['nom_restaurant'];
+                break;
+            }
+        }
+    }
+    // ID ne correspondant à aucun restaurant du proprio → ignoré silencieusement,
+    // on retombe sur la vue "tous les restaurants".
+}
+
+// IDs effectivement utilisés dans les requêtes selon le filtre choisi
+$restaurant_ids = $restaurant_filtre !== null ? [$restaurant_filtre] : $tous_les_ids;
 
 // Pour chaque requête IN (sécurisé)
 $placeholders = implode(',', array_fill(0, count($restaurant_ids), '?'));
@@ -86,36 +111,36 @@ $nb_commandes = $stmt->rowCount();
 
 $avg_cmd = $nb_commandes > 0 ? ($ca_total / $nb_commandes) : 0;
 
-/* 4️⃣ PLAT LE PLUS VENDU */
+/* 4️⃣ PLAT LE PLUS VENDU (respecte le filtre restaurant) */
 $stmt = $conn->prepare("
     SELECT pl.nom_plat, SUM(cp.quantite) AS total_qte
     FROM commande_plats cp
     JOIN plats pl ON cp.plat_id = pl.plat_id
     JOIN restaurants r ON pl.restaurant_id = r.restaurant_id
     JOIN commandes c ON cp.commande_id = c.commande_id
-    WHERE r.proprietaire_id = ?
+    WHERE r.restaurant_id IN ($placeholders)
       AND c.statut != 'annulee'
     GROUP BY cp.plat_id
     ORDER BY total_qte DESC
     LIMIT 1
 ");
-$stmt->execute([$uid]);
+$stmt->execute($restaurant_ids);
 $top_plat = $stmt->fetch();
 
-/* 5️⃣ TOP 5 */
+/* 5️⃣ TOP 5 (respecte le filtre restaurant) */
 $stmt = $conn->prepare("
     SELECT pl.nom_plat, SUM(cp.quantite) AS total_qte
     FROM commande_plats cp
     JOIN plats pl ON cp.plat_id = pl.plat_id
     JOIN restaurants r ON pl.restaurant_id = r.restaurant_id
     JOIN commandes c ON cp.commande_id = c.commande_id
-    WHERE r.proprietaire_id = ?
+    WHERE r.restaurant_id IN ($placeholders)
       AND c.statut != 'annulee'
     GROUP BY cp.plat_id
     ORDER BY total_qte DESC
     LIMIT 5
 ");
-$stmt->execute([$uid]);
+$stmt->execute($restaurant_ids);
 $top_plats = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 /* 6️⃣ COMMANDES PAR JOUR - Exclure les commandes annulées */
@@ -205,9 +230,45 @@ $nb_cmds = array_column($cmds, 'nb_cmd');
 .section-title {
   color: var(--accent);
   font-size: 1.9rem;
-  margin-bottom: 27px;
+  margin-bottom: 10px;
   margin-top: -5px;
   text-align: center;
+}
+
+/* ── Filtre par restaurant ── */
+.filtre-restaurant {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
+}
+
+.filtre-restaurant label {
+  font-weight: 600;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.filtre-restaurant select {
+  padding: 0.6rem 1rem;
+  border-radius: 0.8rem;
+  border: 2px solid rgba(255, 107, 107, 0.25);
+  background: rgba(255, 255, 255, 0.55);
+  font-family: 'HSR', sans-serif;
+  font-size: 0.95rem;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  max-width: 280px;
+}
+
+.filtre-restaurant select:focus {
+  outline: none;
+  border-color: #ff6b6b;
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 0 10px rgba(255, 107, 107, 0.3);
 }
 
 .stats-grid {
@@ -317,7 +378,23 @@ $nb_cmds = array_column($cmds, 'nb_cmd');
     }
   </style>
 <section class="container">
-<h2 class="section-title">📊 Statistiques — Tous vos restaurants</h2>
+<h2 class="section-title">
+  📊 Statistiques — <?= $restaurant_filtre !== null ? htmlspecialchars($restaurant_filtre_nom) : 'Tous vos restaurants' ?>
+</h2>
+
+<?php if (count($mes_restaurants) > 1): ?>
+<div class="filtre-restaurant">
+  <label for="restaurant-select">🏪 Filtrer par restaurant :</label>
+  <select id="restaurant-select" onchange="if(this.value==='all'){window.location.href='statistiques_vendeur.php';}else{window.location.href='statistiques_vendeur.php?restaurant_id='+encodeURIComponent(this.value);}">
+    <option value="all" <?= $restaurant_filtre === null ? 'selected' : '' ?>>🌍 Tous mes restaurants</option>
+    <?php foreach ($mes_restaurants as $r): ?>
+      <option value="<?= (int)$r['restaurant_id'] ?>" <?= $restaurant_filtre === (int)$r['restaurant_id'] ? 'selected' : '' ?>>
+        <?= htmlspecialchars($r['nom_restaurant']) ?>
+      </option>
+    <?php endforeach; ?>
+  </select>
+</div>
+<?php endif; ?>
 
 <div class="stats-grid">
   <div class="stat-card">

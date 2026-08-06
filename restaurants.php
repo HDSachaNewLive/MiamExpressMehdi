@@ -60,7 +60,8 @@ if ($connected) {
               u.user_id AS owner_id, 
               r.nom_restaurant,
               r.ouvert,
-              CASE WHEN f.favori_id IS NOT NULL THEN 1 ELSE 0 END as is_favorite
+              CASE WHEN f.favori_id IS NOT NULL THEN 1 ELSE 0 END as is_favorite,
+              (SELECT AVG(pl.prix) FROM plats pl WHERE pl.restaurant_id = r.restaurant_id) AS prix_moyen
       FROM restaurants r
       LEFT JOIN users u ON r.proprietaire_id = u.user_id
       LEFT JOIN favoris f ON r.restaurant_id = f.restaurant_id AND f.user_id = ?
@@ -75,7 +76,8 @@ if ($connected) {
               u.user_id AS owner_id, 
               r.nom_restaurant,
               r.ouvert,
-              0 as is_favorite
+              0 as is_favorite,
+              (SELECT AVG(pl.prix) FROM plats pl WHERE pl.restaurant_id = r.restaurant_id) AS prix_moyen
       FROM restaurants r
       LEFT JOIN users u ON r.proprietaire_id = u.user_id
       WHERE r.verified = 1
@@ -187,7 +189,9 @@ foreach ($restaurants as $r) {
           <?php foreach ($restos as $r): ?>
             <?php $is_ferme = !($r['ouvert'] ?? 1); $is_owner = $connected && (int)$_SESSION['user_id'] === (int)$r['owner_id']; ?>
 
-            <div class="resto-card <?= $is_ferme ? 'resto-ferme' : '' ?>">
+            <div class="resto-card <?= $is_ferme ? 'resto-ferme' : '' ?>"
+                 id="resto-<?= (int)$r['restaurant_id'] ?>"
+                 data-prix-moyen="<?= $r['prix_moyen'] !== null ? htmlspecialchars(number_format((float)$r['prix_moyen'], 2, '.', '')) : '' ?>">
               <?php if ($is_ferme): ?>
                 <div class="overlay-controls">
                   <span class="overlay-ferme-text">🚫 Fermé</span>
@@ -280,123 +284,217 @@ foreach ($restaurants as $r) {
 document.addEventListener("DOMContentLoaded", () => {
   const sections = document.querySelectorAll(".owner-section");
 
-  // --- container des filtres ---
+  // ── Construction du panneau de filtres (toutes les classes CSS sont dans restaurants.css) ──
   const filterWrapper = document.createElement("div");
   filterWrapper.className = "filter-wrapper";
 
   const title = document.createElement("h3");
-  title.textContent = "Filtrer par proprio";
+  title.textContent = "Rechercher & filtrer";
   title.className = "filter-title";
   filterWrapper.appendChild(title);
 
-  // bouton "Tous"
+  // Recherche texte (restaurants / plats / catégories)
+  const searchBox = document.createElement("div");
+  searchBox.className = "filter-search-box";
+  searchBox.innerHTML = `
+    <input type="text" id="resto-search-input" class="filter-search-input"
+           placeholder="🔎 Restaurant, plat, catégorie..." autocomplete="off">
+  `;
+  filterWrapper.appendChild(searchBox);
+
+  // Dropdown de résultats : élément indépendant, positionné en JS (évite tout souci
+  // d'empilement/débordement lié à son imbrication dans le panneau de filtres)
+  const searchResults = document.createElement("div");
+  searchResults.id = "resto-search-results";
+  searchResults.className = "filter-search-results";
+  document.body.appendChild(searchResults);
+
+  function positionSearchResults() {
+    const inputEl = document.getElementById("resto-search-input");
+    if (!inputEl) return;
+    const rect = inputEl.getBoundingClientRect();
+    searchResults.style.top   = (rect.bottom + 4) + "px";
+    searchResults.style.left  = rect.left + "px";
+    searchResults.style.width = rect.width + "px";
+  }
+
+  // Filtre prix moyen
+  const priceLabel = document.createElement("div");
+  priceLabel.className = "filter-subtitle";
+  priceLabel.textContent = "💶 Prix moyen";
+  filterWrapper.appendChild(priceLabel);
+
+  const priceSelect = document.createElement("select");
+  priceSelect.id = "filter-prix";
+  priceSelect.className = "filter-select";
+  priceSelect.innerHTML = `
+    <option value="all">Tous les prix</option>
+    <option value="0-10">Moins de 10 €</option>
+    <option value="10-20">10 € - 20 €</option>
+    <option value="20-30">20 € - 30 €</option>
+    <option value="30-999999">30 € et plus</option>
+  `;
+  filterWrapper.appendChild(priceSelect);
+
+  // Filtre par proprio
+  const ownerLabel = document.createElement("div");
+  ownerLabel.className = "filter-subtitle";
+  ownerLabel.textContent = "🏪 Propriétaire";
+  filterWrapper.appendChild(ownerLabel);
+
+  const ownerScroll = document.createElement("div");
+  ownerScroll.className = "filter-owner-scroll";
+
+  const ownerButtons = document.createElement("div");
+  ownerButtons.className = "filter-owner-buttons";
+
   const allBtn = document.createElement("button");
+  allBtn.type = "button";
   allBtn.textContent = "Tous";
   allBtn.className = "filter-btn active";
-  filterWrapper.appendChild(allBtn);
+  ownerButtons.appendChild(allBtn);
 
-  // boutons dynamiques
   sections.forEach(section => {
     const owner = section.querySelector(".owner-title").textContent.trim();
     const btn = document.createElement("button");
+    btn.type = "button";
     btn.textContent = owner;
     btn.className = "filter-btn";
-    filterWrapper.appendChild(btn);
+    ownerButtons.appendChild(btn);
   });
 
+  ownerScroll.appendChild(ownerButtons);
+  filterWrapper.appendChild(ownerScroll);
   document.body.appendChild(filterWrapper);
 
-  //style général des boutons de filtre
-  const style = document.createElement("style");
-  style.textContent = `
-    .filter-wrapper {
-      position: fixed;
-      top: 50%;
-      right: 1rem;
-      transform: translateY(-50%);
-      display: flex;
-      flex-direction: column;
-      gap: 0.6rem;
-      z-index: 999999999;
-      background: rgba(255,255,255,0.3);
-      backdrop-filter: blur(8px);
-      border-radius: 1rem;
-      padding: 0.8rem;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.1);
-      transition: all 0.3s ease;
-    }
+  // ── Message "aucun résultat" (affiché quand la combinaison des filtres ne donne rien) ──
+  const noResultsMsg = document.createElement("div");
+  noResultsMsg.className = "filter-no-results";
+  noResultsMsg.innerHTML = `Aucun restaurant ne correspond à ces filtres.`;
+  const mainContainer = document.querySelector("main.container");
+  if (mainContainer) {
+    mainContainer.appendChild(noResultsMsg);
+  } else {
+    document.body.appendChild(noResultsMsg);
+  }
 
-    .filter-title {
-      color: #000;
-      font-size: 1rem;
-      font-weight: 700;
-      margin-bottom: 0.4rem;
-      text-align: center;
-    }
+  // ── État courant des filtres ──
+  let activeOwner = "Tous";
+  let activePriceRange = null; // [min, max] ou null = pas de filtre
 
-    .filter-btn {
-      background: rgba(255,255,255,0.4);
-      color: #0f0f0fce;
-      border: 1px solid rgba(0,0,0,0.1);
-      padding: 0.6rem 0.8rem;
-      border-radius: 0.7rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.25s ease;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      backdrop-filter: blur(6px);
-    }
+  function applyFilters() {
+    let totalVisible = 0;
 
-    .filter-btn:hover {
-      background: rgba(255,255,255,0.7);
-      transform: scale(1.05);
-    }
+    sections.forEach(section => {
+      const owner = section.querySelector(".owner-title").textContent.trim();
+      const ownerMatch = (activeOwner === "Tous" || owner === activeOwner);
 
-    .filter-btn.active {
-      background: #ff6b6b;
-      color: white;
-      transform: scale(1.1);
-      box-shadow: 0 4px 12px rgba(255,107,107,0.4);
-    }
+      if (!ownerMatch) {
+        section.classList.add("hidden");
+        setTimeout(() => (section.style.display = "none"), 450);
+        return;
+      }
 
-    /* animation douce quand les sections apparaissent/disparaissent */
-    .owner-section {
-      opacity: 1;
-      transform: scale(1);
-      transition: opacity 0.4s ease, transform 0.4s ease;
-    }
-
-    .owner-section.hidden {
-      opacity: 0;
-      transform: scale(0.95);
-      pointer-events: none;
-    }
-  `;
-  document.head.appendChild(style);
-
-  // --- logique du filtre ---
-  const buttons = filterWrapper.querySelectorAll(".filter-btn");
-  let activeFilter = "Tous";
-
-  buttons.forEach(btn => {
-    btn.addEventListener("click", () => {
-      activeFilter = btn.textContent.trim();
-
-      buttons.forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-
-      sections.forEach(section => {
-        const owner = section.querySelector(".owner-title").textContent.trim();
-
-        if (activeFilter === "Tous" || owner === activeFilter) {
-          section.classList.remove("hidden");
-          setTimeout(() => (section.style.display = "block"), 100);
-        } else {
-          section.classList.add("hidden");
-          setTimeout(() => (section.style.display = "none"), 450);
+      // Le filtre prix s'applique carte par carte à l'intérieur d'une section visible
+      let visibleCount = 0;
+      section.querySelectorAll(".resto-card").forEach(card => {
+        const prix = parseFloat(card.dataset.prixMoyen);
+        let priceMatch = true;
+        if (activePriceRange) {
+          priceMatch = !isNaN(prix) && prix >= activePriceRange[0] && prix < activePriceRange[1];
         }
+        card.style.display = priceMatch ? "" : "none";
+        if (priceMatch) visibleCount++;
       });
+
+      totalVisible += visibleCount;
+
+      if (visibleCount === 0) {
+        section.classList.add("hidden");
+        setTimeout(() => (section.style.display = "none"), 450);
+      } else {
+        section.classList.remove("hidden");
+        section.style.display = "block";
+      }
     });
+
+    noResultsMsg.classList.toggle("visible", totalVisible === 0);
+  }
+
+  ownerButtons.querySelectorAll(".filter-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      activeOwner = btn.textContent.trim();
+      ownerButtons.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      applyFilters();
+    });
+  });
+
+  priceSelect.addEventListener("change", () => {
+    if (priceSelect.value === "all") {
+      activePriceRange = null;
+    } else {
+      const [min, max] = priceSelect.value.split("-").map(Number);
+      activePriceRange = [min, max];
+    }
+    applyFilters();
+  });
+
+  // ── Recherche AJAX (restaurants / plats / catégories) ──
+  const searchInput = document.getElementById("resto-search-input");
+  let searchTimer = null;
+
+  function escapeHtmlJs(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function renderSearchResults(results) {
+    if (results.length === 0) {
+      searchResults.innerHTML = `<div class="search-result-empty">Aucun résultat</div>`;
+    } else {
+      searchResults.innerHTML = results.map(r => `
+        <a href="${r.url}" class="search-result-item">
+          <span class="search-result-icon">${r.type === 'plat' ? '🍽️' : '🏪'}</span>
+          <span class="search-result-text">
+            <span class="search-result-label">${escapeHtmlJs(r.label)}</span>
+            <span class="search-result-sublabel">${escapeHtmlJs(r.sublabel)}</span>
+          </span>
+        </a>
+      `).join("");
+    }
+    positionSearchResults();
+    searchResults.classList.add("open");
+  }
+
+  searchInput.addEventListener("input", () => {
+    const q = searchInput.value.trim();
+    clearTimeout(searchTimer);
+
+    if (q.length < 2) {
+      searchResults.classList.remove("open");
+      searchResults.innerHTML = "";
+      return;
+    }
+
+    searchTimer = setTimeout(async () => {
+      try {
+        const resp = await fetch("search_restaurants.php?q=" + encodeURIComponent(q));
+        const data = await resp.json();
+        renderSearchResults(data.results || []);
+      } catch (err) {
+        console.error(err);
+      }
+    }, 300);
+  });
+
+  window.addEventListener("resize", positionSearchResults);
+
+  // Fermer les résultats si on clique ailleurs
+  document.addEventListener("click", (e) => {
+    if (!searchBox.contains(e.target) && !searchResults.contains(e.target)) {
+      searchResults.classList.remove("open");
+    }
   });
 });
 </script>

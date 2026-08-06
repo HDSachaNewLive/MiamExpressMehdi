@@ -310,3 +310,317 @@ h1 {
     box-shadow: 0 8px 14px rgba(255, 107, 107, 0.45);
     color: #fff !important;
 }
+/* ══════════════════════════════════════════════
+   Panneau de filtres (recherche / prix / proprio)
+   ══════════════════════════════════════════════ */
+.filter-wrapper {
+  position: fixed;
+  top: 50%;
+  right: 1rem;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  z-index: 999999999;
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(8px);
+  border-radius: 1rem;
+  padding: 0.9rem;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  width: 230px;
+  max-width: calc(100vw - 2rem);
+  font-family: 'HSR', sans-serif;
+}
+
+.filter-title {
+  color: #000;
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.2rem;
+  text-align: center;
+}
+
+.filter-subtitle {
+  color: #333;
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-top: 0.3rem;
+  margin-bottom: -0.2rem;
+}
+
+/* ── Recherche texte ── */
+.filter-search-box {
+  position: relative;
+  z-index: 20;
+  isolation: isolate;
+}
+
+.filter-search-input {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.7rem;
+  background: rgba(207, 207, 207, 0.1);
+  backdrop-filter: blur(10px);
+  font-family: 'HSR', sans-serif;
+  font-size: 0.9rem;
+  color: #333;
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.25s ease;
+  border: 2px solid rgba(228, 121, 121, 0.35) !important;
+  background-clip: padding-box;
+}
+
+.filter-search-input::placeholder {
+  color: rgba(51, 51, 51, 0.6);
+  font-size: 0.9rem;
+}
+
+.filter-search-input:focus {
+  border-color: #ff6b6b !important;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 8px rgba(255, 107, 107, 0.3);
+  transform: scale(1.03);
+}
+
+.filter-search-results {
+  display: none;
+  position: fixed;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(14px);
+  border-radius: 0.8rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  max-height: 320px;
+  margin-top: -3.8px;
+  overflow-y: auto;
+  z-index: 2147483647;
+  border: none;
+}
+
+.filter-search-results.open {
+  display: block;
+}
+
+/* scrollbar personnalisée */ 
+.filter-search-results.open::-webkit-scrollbar { 
+  width: 4px; 
+}
+
+.filter-search-results.open::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1); 
+  border-radius: 20px; 
+}
+
+.filter-search-results.open::-webkit-scrollbar-thumb {
+  background: rgba(228, 128, 128, 0.5);
+  border-radius: 20px;
+  transition: all ease 0.2s;
+}
+
+.filter-search-results.open::-webkit-scrollbar-thumb:hover {
+  background: rgba(200, 95, 95, 0.7);
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.7rem;
+  text-decoration: none;
+  color: #333;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  transition: background 0.2s ease;
+  line-height: 1.2;
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-item:hover {
+  background: rgba(255, 107, 107, 0.12);
+}
+
+.search-result-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.search-result-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.search-result-label {
+  font-weight: 600;
+  font-size: 0.85rem;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-result-sublabel {
+  font-size: 0.72rem;
+  line-height: 1.15;
+  color: #777;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-result-empty {
+  padding: 0.8rem;
+  text-align: center;
+  color: #888;
+  font-size: 0.85rem;
+}
+
+/* ── Filtre prix moyen ── */
+.filter-select {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.7rem;
+  border: 2px solid rgba(228, 121, 121, 0.35);
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(10px);
+  font-family: 'HSR', sans-serif;
+  font-size: 0.88rem;
+  color: #333;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: all 0.25s ease;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: #ff6b6b;
+  background: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 8px rgba(255, 107, 107, 0.3);
+}
+
+/* ── Boutons filtre proprio ── */
+/* Conteneur extérieur : gère le scroll vertical et absorbe le débordement
+   du scale() des boutons pour éviter qu'il ne soit rogné (overflow-x devient
+   automatiquement "auto" dès que overflow-y n'est pas "visible" — c'est ce
+   padding qui donne la marge nécessaire, sans réduire la taille des boutons). */
+.filter-owner-scroll {
+  max-height: 224px;
+  overflow-y: auto;
+  padding: 2px 0px;
+  margin: 0 -8px;
+  scrollbar-width: none;      /* Firefox */
+  -ms-overflow-style: none;   /* IE / Edge */
+}
+
+.filter-owner-scroll::-webkit-scrollbar {
+  display: none;              /* Chrome / Safari / Edge Chromium */
+}
+
+/* Conteneur intérieur : taille d'origine, aucun padding, aucun overflow */
+.filter-owner-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filter-btn {
+  background: rgba(255, 255, 255, 0.22);
+  color: #222;
+  border: none;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.7rem;
+  font-weight: 600;
+  font-size: 0.88rem;
+  line-height: 1.3;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(10px);
+  font-family: 'HSR', sans-serif;
+  white-space: normal;
+  word-break: break-word;
+  overflow: visible;
+  flex-shrink: 0;
+  width: 90%;
+  box-sizing: border-box;
+  text-align: center;
+  z-index: 1000;
+}
+
+.filter-btn:hover {
+  background: rgba(255, 255, 255, 0.4);
+  transform: scale(1.03);
+  transition: all ease 0.2s;
+}
+
+.filter-btn.active {
+  background: #ff6b6b;
+  color: white;
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(255, 107, 107, 0.4);
+}
+
+/* Animation douce quand les sections apparaissent/disparaissent */
+.owner-section {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.owner-section.hidden {
+  opacity: 0;
+  transform: scale(0.95);
+  pointer-events: none;
+}
+
+@media (max-width: 480px) {
+  .filter-wrapper {
+    width: 190px;
+    padding: 0.7rem;
+    right: 0.5rem;
+  }
+
+  .filter-owner-scroll {
+    max-height: 160px;
+  }
+}
+
+/* ── Message "aucun résultat" (filtres combinés sans correspondance) ── */
+.filter-no-results {
+  display: none;
+  text-align: center;
+  margin: 2.5rem auto;
+  padding: 1.6rem 2rem;
+  max-width: 480px;
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 1.2rem;
+  color: #555;
+  font-family: 'HSR', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+}
+
+.filter-no-results.visible {
+  display: block;
+  animation: fadeInNoResults 0.35s ease;
+}
+
+.filter-no-results-icon {
+  display: block;
+  font-size: 2.2rem;
+  margin-bottom: 0.5rem;
+}
+
+@keyframes fadeInNoResults {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
