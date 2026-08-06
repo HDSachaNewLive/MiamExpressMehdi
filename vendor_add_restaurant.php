@@ -5,6 +5,7 @@ require_once "db/config.php";
 require_once "detection_NSFW.php";
 require_once "upload_helper.php";
 require_once "csrf_helper.php";
+require_once "auth_helper.php";
 if (!isset($_SESSION["user_id"]) || ($_SESSION["type_compte"] ?? "") !== "proprietaire") { 
     header("Location: login.php"); exit; 
 }
@@ -37,15 +38,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             if ($p_nom_check !== "") {
                 $plats_pour_check[] = ['nom_plat' => $p_nom_check, 'description_plat' => $p_desc_check];
             }
-          }
         }
         $precheck = fh_verify_restaurant($nom, $desc, $adresse, $categorie, $plats_pour_check);
+        $is_admin = fh_is_admin($conn);
 
-        // Score ≥ 20 = refus immédiat, on n'insère rien
-        if ($precheck['score'] >= 20) {
+        // Score ≥ 20 = refus immédiat, sauf si admin
+        if (!$is_admin && $precheck['score'] >= 20) {
             $msg = "⛔ Votre restaurant n'a pas pu être soumis : le contenu ne respecte pas les règles de FoodHub. Veuillez vérifier le nom, la description et les noms de plats.";
         } else {
-        // ─────────────────────────────────────────────────────────────────────
 
         // Insert restaurant
         $ins = $conn->prepare("INSERT INTO restaurants (proprietaire_id, nom_restaurant, adresse, latitude, longitude, categorie, description_resto) VALUES (?, ?, ?, ?, ?, ?, ?)");
@@ -117,6 +117,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         } // fin else pré-vérification
     }
+  }
 }
 ?>
 <!DOCTYPE html>
@@ -175,9 +176,9 @@ document.getElementById("add-plat").addEventListener("click", function(){
         <input name="plats[${platIndex}][prix]" type="number" step="0.01" placeholder="Prix (€)" required>
         <textarea name="plats[${platIndex}][description]" placeholder="Description"></textarea>
         <select name="plats[${platIndex}][type]" required>
-            <option value="">-- Type de plat --</option>
+            <option value="" selected disabled>-- Type de plat --</option>
             <option value="entree">🥗 Entrée</option>
-            <option value="plat" selected>🍽️ Plat</option>
+            <option value="plat">🍽️ Plat</option>
             <option value="accompagnement">🍚 Accompagnement</option>
             <option value="boisson">🥤 Boisson</option>
             <option value="dessert">🍰 Dessert</option>
@@ -281,7 +282,7 @@ document.getElementById("add-plat").addEventListener("click", function(){
   backdrop-filter: blur(15px);
   background: rgba(255, 255, 255, 0.15);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
-  transition: background 0.3s ease, transform 0.2s;
+  transition: all 0.3s ease, background 0.3s ease, transform 0.2s ease;
   font-family: 'HSR';
 }
 
@@ -451,6 +452,67 @@ textarea:focus {
   color: #ff4d4d !important;
   width: auto !important;
   font-size: 0.9rem !important;
+}
+
+.btn-del-plat:hover {
+  background: rgba(220, 41, 41, 0.36) !important;
+  color: #ff4d4d !important;
+}
+
+input[type="file"]::file-selector-button {
+    background: rgba(176, 176, 176, 0.25);
+    font-family: 'HSR';
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    border: none;
+    font-size: 0.8rem;
+    padding: 6px 10px;
+    transition: all ease 0.3s;
+}
+
+input[type="file"]::file-selector-button:hover {
+    background: rgba(176, 176, 176, 0.25);
+    transform: scale(1.03);
+}
+
+textarea::-webkit-scrollbar {
+  width: 7px;
+}
+
+textarea::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+}
+
+textarea::-webkit-scrollbar-thumb {
+  background: rgba(241, 241, 241, 0.6);
+  border-radius: 20px;
+  transition: all ease 0.2s;
+}
+
+textarea::-webkit-scrollbar-thumb:hover {
+  background:  rgba(223, 223, 223, 0.67);
+  transition: all ease 0.2s;
+}
+
+textarea::-webkit-scrollbar {
+  width: 7px;
+}
+
+textarea::-webkit-scrollbar-track {
+  background: rgba(101, 252, 159, 0.24);
+  border-radius: 20px;
+}
+
+textarea::-webkit-scrollbar-thumb {
+  background: rgba(84, 190, 123, 0.6);
+  border-radius: 20px;
+  transition: all ease 0.2s;
+}
+
+textarea::-webkit-scrollbar-thumb:hover {
+  background:  rgba(24, 183, 103, 0.67);
+  transition: all ease 0.2s;
 }
 </style>
 
