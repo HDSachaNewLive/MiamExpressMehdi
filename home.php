@@ -197,6 +197,15 @@ require_once 'welcome_animation.php';
     userId: <?= (int)$uid ?>,
     reason: <?= json_encode($welcome_reason) ?>
   };
+  // Retarde l'exécution de fn jusqu'à la fin de la vidéo welcome (ou l'exécute
+  // immédiatement si aucune vidéo n'est prévue pour cette visite).
+  window.__wlWaitForReveal = function (fn) {
+    if (!window.__WL_CONFIG__ || !window.__WL_CONFIG__.show) {
+      fn();
+    } else {
+      document.addEventListener('wl:revealed', fn, { once: true });
+    }
+  };
   </script>
   <title>Accueil - FoodHub</title>
   <link rel="stylesheet" href="assets/style.css">
@@ -261,7 +270,7 @@ require_once 'welcome_animation.php';
 }
 </style>
 </div>
-  <main class="container">
+  <main class="container<?= $show_welcome ? ' wl-container-hidden' : '' ?>" id="home-main-container">
     <?php
     $hour = date('H');
     if($hour < 12) $greeting = "Bonjour";
@@ -1992,7 +2001,7 @@ document.addEventListener("DOMContentLoaded", () => {
   updateSliderPosition();
   
   //démarrer le slide automatique
-  startAutoSlide();
+  window.__wlWaitForReveal(startAutoSlide);
   
   //pause au survol
   const slider = document.querySelector('.reviews-slider');
@@ -2075,7 +2084,7 @@ document.addEventListener("DOMContentLoaded", () => {
   updateRestaurantPosition();
   
   //slide autom comme pour les comms
-  startAutoRestaurantSlide();
+  window.__wlWaitForReveal(startAutoRestaurantSlide);
   
   // Pause au survol
   const restaurantsSlider = document.querySelector('.restaurants-slider');
@@ -2165,8 +2174,10 @@ window.addEventListener('load', function() {
     "https://raw.githubusercontent.com/HDSachaNewLive/foodhub-assets/main/14. January 2014 (Wii U).mp3",
     "https://raw.githubusercontent.com/HDSachaNewLive/foodhub-assets/main/November 2012 Nintendo eShop Music.mp3",
     "https://raw.githubusercontent.com/HDSachaNewLive/foodhub-assets/main/NTE - 9°C Coffee OST Extended.mp3",
+    "https://raw.githubusercontent.com/HDSachaNewLive/foodhub-assets/main/September 2015 Nintendo eShop Music.mp3",
     "https://raw.githubusercontent.com/HDSachaNewLive/foodhub-assets/main/Aéroport - Animal Crossing New Horizons OST.mp3",
-    "https://raw.githubusercontent.com/HDSachaNewLive/foodhub-assets/main/Stranger Than Paradise.mp3"
+    "https://raw.githubusercontent.com/HDSachaNewLive/foodhub-assets/main/Stranger Than Paradise.mp3",
+    "https://raw.githubusercontent.com/HDSachaNewLive/foodhub-assets/main/January 2015 - Nintendo eShop Music.mp3"
   ];
 
   const trackNames = [
@@ -2228,7 +2239,7 @@ window.addEventListener('load', function() {
   }
 
   // Démarrer
-  playTrack();
+  window.__wlWaitForReveal(playTrack);
 
 // Relancer la musique si on revient via les flèches du navigateur
 window.addEventListener('pageshow', function(event) {
