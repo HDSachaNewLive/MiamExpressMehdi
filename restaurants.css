@@ -408,7 +408,7 @@ h1 {
 }
 
 .filter-search-results.open::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1); 
+  background: rgba(255, 255, 254, 0.1); 
   border-radius: 20px; 
 }
 

@@ -20,8 +20,8 @@
 }
 
 .recommendation-content {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(15px);
+  background: rgba(244, 111, 138, 0.174);
+  backdrop-filter: blur(18px);
   border-radius: 1.5rem;
   padding: 2rem;
   max-width: 600px;
