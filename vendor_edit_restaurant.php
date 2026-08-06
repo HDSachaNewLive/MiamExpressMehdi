@@ -6,12 +6,15 @@ include 'vanta_freeze.php';
 require_once 'csrf_helper.php';
 require_once 'upload_helper.php';
 require_once 'detection_NSFW.php';
+require 'auth_helper.php';
 if (!isset($_SESSION['user_id']) || ($_SESSION['type_compte'] ?? '') !== 'proprietaire') {
     header('Location: login.php');
     exit;
 }
 $owner_id = (int)$_SESSION['user_id'];
-$msg = '';
+$is_admin = fh_is_admin($conn);
+$msg = $_SESSION['msg'] ?? '';
+if (isset($_SESSION['msg'])) unset($_SESSION['msg']);
 
 if (isset($_GET['restaurant_id'])) {
     $rid = (int)$_GET['restaurant_id'];
@@ -31,6 +34,54 @@ if (!$resto) abort_404('restaurant');
 $stmt = $conn->prepare("SELECT * FROM plats WHERE restaurant_id=?");
 $stmt->execute([$rid]);
 $plats = $stmt->fetchAll();
+
+/* Modification AJAX de la description d'un plat (clic pour éditer) */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_edit_plat_desc'])) {
+    header('Content-Type: application/json');
+
+    if (empty($_POST['csrf_token']) || !fh_verify_csrf($_POST['csrf_token'])) {
+        echo json_encode(['success' => false, 'error' => 'Jeton CSRF invalide']);
+        exit;
+    }
+
+    $pid_ajax = (int)($_POST['plat_id'] ?? 0);
+    $value = trim($_POST['value'] ?? '');
+
+    // Vérifier que le plat appartient bien à ce restaurant
+    $checkPlat = $conn->prepare("SELECT plat_id FROM plats WHERE plat_id = ? AND restaurant_id = ?");
+    $checkPlat->execute([$pid_ajax, $rid]);
+    if (!$checkPlat->fetch()) {
+        echo json_encode(['success' => false, 'error' => 'Plat introuvable']);
+        exit;
+    }
+
+    if ($value === '') {
+        echo json_encode(['success' => false, 'error' => 'La description ne peut pas être vide']);
+        exit;
+    }
+
+    // Re-vérification du contenu avant sauvegarde (comme pour update_restaurant / add_plat)
+    $checkContent = fh_check_content($value);
+
+    if (!$is_admin && $checkContent['score'] >= 20) {
+        echo json_encode(['success' => false, 'error' => 'Contenu refusé : ne respecte pas les règles de FoodHub.']);
+        exit;
+    }
+
+    $updDesc = $conn->prepare("UPDATE plats SET description_plat = ? WHERE plat_id = ? AND restaurant_id = ?");
+    $updDesc->execute([$value, $pid_ajax, $rid]);
+
+    $flagged = false;
+    if (!$is_admin && $checkContent['score'] >= 10) {
+        $flagged = true;
+        $conn->prepare("UPDATE restaurants SET verified = 0 WHERE restaurant_id = ?")->execute([$rid]);
+        $notifStmt = $conn->prepare("INSERT INTO notifications (user_id, type, restaurant_id, avis_id, message) VALUES (?, 'comment', ?, NULL, ?)");
+        $notifStmt->execute([1, $rid, "Description de plat modifiée et signalée pour vérification sur : " . $resto['nom_restaurant'] . " ⚠️ [À vérifier — contenu signalé]"]);
+    }
+
+    echo json_encode(['success' => true, 'message' => 'Description mise à jour', 'flagged' => $flagged]);
+    exit;
+}
 
 // Validation CSRF pour toutes les requêtes POST (forms doivent inclure fh_csrf_field())
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -59,14 +110,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_restaurant']))
         $plats_pour_check[] = ['nom_plat' => $p_check['nom_plat'], 'description_plat' => $p_check['description_plat']];
     }
     $precheck = fh_verify_restaurant($nom, $desc, $adresse, $categorie, $plats_pour_check);
+    $is_admin = fh_is_admin($conn);
 
-    if ($precheck['score'] >= 20) {
-        $msg = "Modification refusée : le contenu ne respecte pas les règles de FoodHub. Vérifiez le nom, la description, les plats ou l'adresse.";
+    // Score ≥ 20 = refus immédiat, sauf si admin
+    if (!$is_admin && $precheck['score'] >= 20) {
+        $msg = "⛔ Modification refusée : le contenu ne respecte pas les règles de FoodHub. Vérifiez le nom, la description, les plats ou l'adresse.";
     } else {
         $upd = $conn->prepare("UPDATE restaurants SET nom_restaurant=?, adresse=?, latitude=?, longitude=?, categorie=?, description_resto=?, ouvert=? WHERE restaurant_id=?");
         $upd->execute([$nom, $adresse, $latitude, $longitude, $categorie, $desc, $ouvert, $rid]);
 
-        if ($precheck['score'] >= 10) {
+        if (!$is_admin && $precheck['score'] >= 10) {
             // si contenu limite on repasse le restaurant en attente de vérification admin
             $conn->prepare("UPDATE restaurants SET verified = 0 WHERE restaurant_id = ?")->execute([$rid]);
             $notifStmt = $conn->prepare("INSERT INTO notifications (user_id, type, restaurant_id, avis_id, message) VALUES (?, 'comment', ?, NULL, ?)");
@@ -79,6 +132,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_restaurant']))
 
     $check->execute([$rid, $owner_id]);
     $resto = $check->fetch();
+    // PRG: stocker le message en session puis rediriger pour éviter la re-soumission POST au reload
+    $_SESSION['msg'] = $msg;
+    header('Location: vendor_edit_restaurant.php?restaurant_id=' . $rid);
+    exit;
 }
 
 // supprimer plat
@@ -94,10 +151,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_plat_id'])) {
     $stmt = $conn->prepare("DELETE FROM plats WHERE plat_id=? AND restaurant_id=?");
     $stmt->execute([$pid, $rid]);
     $msg = "Plat supprimé avec succès.";
-
+    
     $stmt = $conn->prepare("SELECT * FROM plats WHERE restaurant_id=?");
     $stmt->execute([$rid]);
     $plats = $stmt->fetchAll();
+    $_SESSION['msg'] = $msg;
+    header('Location: vendor_edit_restaurant.php?restaurant_id=' . $rid);
+    exit;
 }
 
 // ajouter plat
@@ -142,6 +202,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_plat'])) {
         $stmt = $conn->prepare("SELECT * FROM plats WHERE restaurant_id=?");
         $stmt->execute([$rid]);
         $plats = $stmt->fetchAll();
+        $_SESSION['msg'] = $msg;
+        header('Location: vendor_edit_restaurant.php?restaurant_id=' . $rid);
+        exit;
     }
 }
 
@@ -158,6 +221,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_plat_type'])) 
     $stmt = $conn->prepare("SELECT * FROM plats WHERE restaurant_id=?");
     $stmt->execute([$rid]);
     $plats = $stmt->fetchAll();
+    $_SESSION['msg'] = $msg;
+    header('Location: vendor_edit_restaurant.php?restaurant_id=' . $rid);
+    exit;
 }
 
 // ajouter/remplacer image d'un plat existant
@@ -194,6 +260,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_plat_image']))
     $stmt = $conn->prepare("SELECT * FROM plats WHERE restaurant_id=?");
     $stmt->execute([$rid]);
     $plats = $stmt->fetchAll();
+    $_SESSION['msg'] = $msg;
+    header('Location: vendor_edit_restaurant.php?restaurant_id=' . $rid);
+    exit;
 }
 
 // supprimer image d'un plat existant
@@ -212,6 +281,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_plat_image']))
     $stmt = $conn->prepare("SELECT * FROM plats WHERE restaurant_id=?");
     $stmt->execute([$rid]);
     $plats = $stmt->fetchAll();
+    $_SESSION['msg'] = $msg;
+    header('Location: vendor_edit_restaurant.php?restaurant_id=' . $rid);
+    exit;
 }
 
 // supprimer restaurant
@@ -249,8 +321,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_restaurant']))
 
 <main class="container">
 
-<h1>Modifier : <?= htmlspecialchars($resto['nom_restaurant']) ?></h1>
-<?php if ($msg) echo "<div class='success'>".htmlspecialchars($msg)."</div>"; ?>
+<a class="title" href="menu.php?restaurant_id=<?=(int)$resto['restaurant_id']?>"><h1>Modifier : <?=htmlspecialchars($resto['nom_restaurant'])?> ↗</h1></a>
+<?php if (!empty($msg)) echo "<div class='success'>".htmlspecialchars($msg)."</div>"; ?>
 
 <!-- FORMULAIRE RESTAURANT -->
 <form method="post" class="form">
@@ -331,7 +403,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_restaurant']))
     <?php foreach($plats as $p): ?>
     <div class="resto-card">
         <strong><?= htmlspecialchars($p['nom_plat']) ?></strong> — <?= number_format($p['prix'],2) ?> €
-        <p><?= htmlspecialchars($p['description_plat']) ?></p>
+        <p class="plat-desc-editable" data-plat-id="<?= (int)$p['plat_id'] ?>" data-original="<?= htmlspecialchars($p['description_plat']) ?>" title="Cliquez pour modifier"><?= nl2br(htmlspecialchars($p['description_plat'])) ?></p>
 
         <!-- Image actuelle du plat -->
         <?php if (!empty($p['image_path']) && file_exists($p['image_path'])): ?>
@@ -432,6 +504,116 @@ function previewExistingImage(input, platId) {
     };
     reader.readAsDataURL(file);
 }
+</script>
+
+
+<script>
+// Édition AJAX de la description des plats (clic pour modifier)
+(function(){
+  document.querySelectorAll('.plat-desc-editable').forEach(cell => {
+    cell.addEventListener('click', function(e) {
+      if (this.classList.contains('editing')) return;
+      e.stopPropagation();
+
+      const platId = this.dataset.platId;
+      const currentValue = this.dataset.original || this.innerText;
+      const originalHtml = this.innerHTML;
+
+      this.classList.add('editing');
+      this.innerHTML = '';
+
+      const textarea = document.createElement('textarea');
+      textarea.className = 'plat-desc-textarea';
+      textarea.value = currentValue;
+
+      const actionsDiv = document.createElement('div');
+      actionsDiv.className = 'plat-desc-actions';
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'plat-desc-cancel';
+      cancelBtn.type = 'button';
+      cancelBtn.textContent = 'Annuler';
+
+      actionsDiv.appendChild(cancelBtn);
+      this.appendChild(textarea);
+      this.appendChild(actionsDiv);
+
+      const adjustHeight = () => {
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+        textarea.style.maxHeight = 300;
+      };
+      adjustHeight();
+      textarea.addEventListener('input', adjustHeight);
+
+      textarea.focus();
+      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+
+      const cancelEdit = () => {
+        cell.classList.remove('editing');
+        cell.innerHTML = originalHtml;
+      };
+
+      const saveEdit = () => {
+        const newValue = textarea.value.trim();
+        if (!newValue) {
+          alert('La description ne peut pas être vide');
+          textarea.focus();
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append('ajax_edit_plat_desc', '1');
+        formData.append('plat_id', platId);
+        formData.append('value', newValue);
+        const csrfEl = document.querySelector('input[name="csrf_token"]');
+        if (csrfEl) formData.append('csrf_token', csrfEl.value);
+
+        fetch('vendor_edit_restaurant.php?restaurant_id=<?= (int)$rid ?>', {
+          method: 'POST',
+          body: formData
+        })
+        .then(resp => {
+          if (!resp.ok) throw new Error('Erreur HTTP: ' + resp.status);
+          return resp.json();
+        })
+        .then(data => {
+          if (data.success) {
+            cell.classList.remove('editing');
+            cell.innerHTML = newValue.replace(/\n/g, '<br>');
+            cell.dataset.original = newValue;
+            if (data.flagged) {
+              alert('⚠️ Contenu signalé : le restaurant repasse en attente de validation par l\'admin.');
+            }
+          } else {
+            alert('Erreur : ' + (data.error || 'Impossible de mettre à jour'));
+            textarea.focus();
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          alert('Erreur réseau');
+          textarea.focus();
+        });
+      };
+
+      textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          saveEdit();
+        } else if (e.key === 'Escape') {
+          cancelEdit();
+        }
+      });
+
+      cancelBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        cancelEdit();
+      });
+    });
+  });
+})();
 </script>
 
 <style>
@@ -698,13 +880,13 @@ h2, h3 {
   color: rgba(87, 87, 87, 0.85);
 }
 
-a {
+a:not(title) {
   color: var(--accent);
   text-decoration: none;
   transition: color 0.3s ease;
 }
 
-a:hover { color: var(--accent-dark); }
+a:not(title):hover { color: var(--accent-dark); }
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
@@ -765,6 +947,124 @@ a:hover { color: var(--accent-dark); }
 option {
   background: transparent;
   backdrop-filter: blur(16px);
+}
+
+input[type="file"]::file-selector-button {
+    background: rgba(176, 176, 176, 0.25);
+    font-family: 'HSR';
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    border: none;
+    font-size: 0.8rem;
+    padding: 6px 10px;
+    transition: all ease 0.3s;
+}
+
+input[type="file"]::file-selector-button:hover {
+    background: rgba(176, 176, 176, 0.25);
+    transform: scale(1.03);
+}
+
+textarea::-webkit-scrollbar {
+  width: 7px;
+}
+
+textarea::-webkit-scrollbar-track {
+  background: rgba(101, 252, 159, 0.24);
+  border-radius: 20px;
+}
+
+textarea::-webkit-scrollbar-thumb {
+  background: rgba(84, 190, 123, 0.6);
+  border-radius: 20px;
+  transition: all ease 0.2s;
+}
+
+textarea::-webkit-scrollbar-thumb:hover {
+  background:  rgba(24, 183, 103, 0.67);
+  transition: all ease 0.2s;
+}
+
+
+
+/* Description de plat éditable (clic pour modifier) + troncature à 5 lignes */
+.plat-desc-editable {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  border-radius: 0.5rem;
+  padding: 4px 6px;
+  margin: 5px -6px 0 -6px;
+  margin-top: 7px;
+  transition: background 0.2s ease;
+}
+
+.plat-desc-editable:hover {
+  background: rgba(72, 216, 139, 0.4);
+}
+
+.plat-desc-editable.editing {
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+  cursor: default;
+}
+
+.plat-desc-textarea {
+  width: 100%;
+  min-height: 90px;
+  max-height: 300px;
+  padding: 10px;
+  border: 2px solid #ff6b6b;
+  border-radius: 0.5rem;
+  font-family: 'HSR', sans-serif;
+  font-size: inherit;
+  color: #262626;
+  background: rgba(255, 255, 255, 0.69);
+  backdrop-filter: blur(3px);
+  box-sizing: border-box;
+  resize: none;
+  outline: none;
+  margin-top: 1px;
+  margin-bottom: -1px;
+}
+
+.plat-desc-actions {
+  margin-top: 6px;
+}
+
+.plat-desc-cancel {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 0.7rem;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.93rem;
+  font-family: 'HSR', sans-serif;
+  background: #ff6b6b;
+  color: white;
+  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.35);
+  transition: all 0.3s ease;
+  margin-top: -9.5px;
+  margin-bottom: 3px;
+}
+
+.plat-desc-cancel:hover {
+  background: #ff3b3b;
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.45);
+}
+
+a.title {
+  text-shadow: 0px 0px #222;
+  transition: all ease 0.3s;
+}
+
+a.title:hover {
+  text-shadow: 4px 4px #222222a1;
+  opacity: 1;
 }
 </style>
 
