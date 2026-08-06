@@ -838,6 +838,41 @@ ul li:hover {
   background: rgba(255,255,255,0.55);
   color: #222;
 }
+input[type="file"]::file-selector-button {
+    background: rgba(176, 176, 176, 0.25);
+    font-family: 'HSR';
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    border: none;
+    font-size: 0.8rem;
+    padding: 6px 10px;
+    transition: all ease 0.3s;
+}
+
+input[type="file"]::file-selector-button:hover {
+    background: rgba(176, 176, 176, 0.25);
+    transform: scale(1.03);
+}
+
+textarea::-webkit-scrollbar {
+  width: 7px;
+}
+
+textarea::-webkit-scrollbar-track {
+  background: rgba(96, 169, 193, 0.37);
+  border-radius: 20px;
+}
+
+textarea::-webkit-scrollbar-thumb {
+  background: rgba(138, 185, 228, 0.6);
+  border-radius: 20px;
+  transition: all ease 0.2s;
+}
+
+textarea::-webkit-scrollbar-thumb:hover {
+  background: rgba(96, 201, 231, 0.67);
+  transition: all ease 0.2s;
+}
 </style>
 </main>
 <script src="address-autocomplete.js"></script>

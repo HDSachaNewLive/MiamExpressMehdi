@@ -111,6 +111,7 @@
       z-index: 99999;
       max-height: 240px;
       overflow-y: auto;
+      margin-top: -2px;
     }
     .user-search-dropdown li {
       padding: 9px 14px;
@@ -131,6 +132,26 @@
     .user-search-dropdown li.active {
       background: rgba(255,107,107,0.12) !important;
       color: #c0392b;
+    }
+
+    .user-search-dropdown::-webkit-scrollbar {
+      width: 7px;
+    }
+
+    .user-search-dropdown::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+    }
+
+    .user-search-dropdown::-webkit-scrollbar-thumb {
+      background: rgba(241, 241, 241, 0.6);
+      border-radius: 20px;
+      transition: all ease 0.2s;
+    }
+
+    .user-search-dropdown::-webkit-scrollbar-thumb:hover {
+      background:  rgba(223, 223, 223, 0.67);
+      transition: all ease 0.2s;
     }
   `;
   document.head.appendChild(style);

@@ -124,6 +124,26 @@
       background: rgba(255,107,107,0.12) !important;
       color: #c0392b;
     }
+    
+    .nominatim-dropdown::-webkit-scrollbar {
+      width: 7px;
+    }
+
+    .nominatim-dropdown::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+    }
+
+    .nominatim-dropdown::-webkit-scrollbar-thumb {
+      background: rgba(241, 241, 241, 0.6);
+      border-radius: 20px;
+      transition: all ease 0.2s;
+    }
+
+    .nominatim-dropdown::-webkit-scrollbar-thumb:hover {
+      background:  rgba(223, 223, 223, 0.67);
+      transition: all ease 0.2s;
+    }
   `;
   document.head.appendChild(style);
 
