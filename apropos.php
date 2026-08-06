@@ -29,8 +29,13 @@ $error = ''; // pas de POST dans cette page donc pas d'erreur a verifier (inutil
         <h2>Notre Mission</h2>
         <div class="mission-text">
           <p><strong>FoodHub</strong>, c'est une plateforme qui simplifie la commande de repas en ligne.</p>
-          <p>Mon objectif : connecter les utilisateurs avec les meilleurs restaurants autour d'eux, tout en offrant une expérience fluide, rapide et agréable.</p>
+          <p>L'objectif : connecter les utilisateurs avec les meilleurs restaurants autour d'eux, tout en offrant une expérience fluide, rapide et agréable.</p>
           <p>Ce projet/site a été conçu dans le cadre d'un  projet pour mon <strong>BTS SIO</strong> pour démontrer l'intégration de plusieurs technologies web (PHP, MySQL, JavaScript, CSS, HTML).</p>
+        
+        <p style="margin-top: 8px;">Date de création/1er fonctionnement du site: <i>26/10/2025</i></p>
+        
+        <p>Date de mise en ligne publique officielle :</p>
+        <p><strong>Mardi 19 Mai 2026, 2:09 <i>(UTC+2, Paris)</i>.</strong></p>
         </div>
         
         <div class="developer-info">
@@ -38,9 +43,10 @@ $error = ''; // pas de POST dans cette page donc pas d'erreur a verifier (inutil
           <p>Projet réalisé par <strong>Mehdi</strong>, étudiant en BTS SIO.</p>
           <p>Mentions/Remerciements :
             <ul>
+              <li><strong>Etowaru (pour les idées proposées)</strong></li>
               <li><strong>M. Jallon (A.K.A Jallon Le GOAT)</strong></li>
               <li><strong>M. Bourdon (sudo rm -rf /*)</strong></li>
-              <li><strong>Navine KANNAN (pour les idées proposées)</strong></li>
+              <li><strong>N. KANNAN</strong></li>
             </ul>
           </p>
           <p>📧 <a href="mailto:mehdiguerbas5@gmail.com" class="contact-link">mehdiguerbas5@gmail.com</a></p>
@@ -49,13 +55,14 @@ $error = ''; // pas de POST dans cette page donc pas d'erreur a verifier (inutil
           <h3>Testeur(s)</h3>
           <p>Tests réalisés par:</p>
           <ul>
+              <li><strong>Etowaru - Konosekai DrainWorld</strong></li>
               <li><strong>M. Jallon (A.K.A Jallon Le GOAT)</strong></li>
               <li><strong>M. Bourdon (sudo rm -rf /*)</strong></li>
               <li><strong>YanisCDN</strong></li>
               
           </ul>
           <p>Mentions/Remerciements :
-            <p><strong>Yanis A. (A.K.A YanisCDN, Le Testeur Originel)</strong></p>
+            <p><strong>Zacharie S. (A.K.A Etowaru, Le Testeur Originel)</strong></p>
           </p>
         </div>
       </div>
