@@ -2,11 +2,15 @@
 // upload_helper.php
 // Helpers pour valider et stocker les images uploadées en toute sécurité.
 
+if (!defined('FH_DEFAULT_UPLOAD_MAX_BYTES')) {
+    define('FH_DEFAULT_UPLOAD_MAX_BYTES', 5 * 1024 * 1024);
+}
+
 /**
  * Valide et déplace une image uploadée.
  * Retourne ['success' => bool, 'filename' => string|null, 'error' => string|null]
  */
-function fh_handle_image_upload(array $file, string $destDir, int $maxBytes = 2 * 1024 * 1024, ?array $allowedMime = null): array {
+function fh_handle_image_upload(array $file, string $destDir, int $maxBytes = FH_DEFAULT_UPLOAD_MAX_BYTES, ?array $allowedMime = null): array {
     if (session_status() === PHP_SESSION_NONE) session_start();
 
     if ($allowedMime === null) {
@@ -70,7 +74,7 @@ function fh_handle_image_upload(array $file, string $destDir, int $maxBytes = 2 
  * Retourne ['success' => bool, 'results' => array, 'error' => string|null]
  * où 'results' est une liste de retours produits par `fh_handle_image_upload()`.
  */
-function fh_handle_uploaded_field(string $fieldName, string $destDir, int $maxBytes = 2 * 1024 * 1024, ?array $allowedMime = null): array {
+function fh_handle_uploaded_field(string $fieldName, string $destDir, int $maxBytes = FH_DEFAULT_UPLOAD_MAX_BYTES, ?array $allowedMime = null): array {
     if (session_status() === PHP_SESSION_NONE) session_start();
 
     if (!isset($_FILES[$fieldName])) {
