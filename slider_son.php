@@ -6,7 +6,7 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-    const audio = document.getElementById("player");
+    const audio = document.getElementById("player", 'audio');
     const slider = document.getElementById("volume-slider");
     const btn = document.getElementById("volume-button");
 
@@ -226,7 +226,7 @@ window.addEventListener('pageshow', function(event) {
 <?php
     // Inclure le widget notifs forum (sauf pages exclues)
     $page_courante = basename($_SERVER['PHP_SELF'] ?? '');
-    $pages_sans_notifs = ['vendor_edit_restaurant.php', 'media_player.php'];
+    $pages_sans_notifs = ['vendor_edit_restaurant.php', 'media_player.php', 'login.php'];
     if (!in_array($page_courante, $pages_sans_notifs) && isset($_SESSION['user_id'])) {
         include 'widget_notifs_forum.php';
     }
