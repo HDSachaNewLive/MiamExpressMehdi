@@ -1,0 +1,993 @@
+-- phpMyAdmin SQL Dump
+-- version 5.2.3
+-- https://www.phpmyadmin.net/
+--
+-- Host: mysql-foodhub-sio.alwaysdata.net
+-- Generation Time: Aug 06, 2026 at 02:23 AM
+-- Server version: 11.4.12-MariaDB
+-- PHP Version: 8.4.24
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
+
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+
+--
+-- Database: `foodhub-sio_db`
+--
+CREATE DATABASE IF NOT EXISTS `foodhub-sio_db` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+USE `foodhub-sio_db`;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `admin_actions`
+--
+
+CREATE TABLE `admin_actions` (
+  `action_id` int(11) NOT NULL,
+  `admin_id` int(11) NOT NULL,
+  `target_user_id` int(11) NOT NULL,
+  `action_type` enum('desactiver','activer','supprimer') NOT NULL,
+  `raison` text DEFAULT NULL,
+  `date_action` datetime DEFAULT current_timestamp(),
+  `target_type` enum('user','restaurant','coupon') NOT NULL DEFAULT 'user',
+  `target_id` int(11) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `annonces`
+--
+
+CREATE TABLE `annonces` (
+  `annonce_id` int(11) NOT NULL,
+  `titre` varchar(255) NOT NULL,
+  `message` text NOT NULL,
+  `date_debut` datetime NOT NULL,
+  `date_fin` datetime NOT NULL,
+  `actif` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `approvisionnements`
+--
+
+CREATE TABLE `approvisionnements` (
+  `approvisionnement_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `montant` decimal(10,2) NOT NULL,
+  `carte_masquee` varchar(30) DEFAULT NULL,
+  `date_approvisionnement` datetime NOT NULL DEFAULT current_timestamp(),
+  `statut` enum('validé','en_cours','échoué') NOT NULL DEFAULT 'validé'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `avis`
+--
+
+CREATE TABLE `avis` (
+  `avis_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `restaurant_id` int(11) NOT NULL,
+  `note` int(11) DEFAULT NULL,
+  `commentaire` text DEFAULT NULL,
+  `date_avis` timestamp NULL DEFAULT current_timestamp(),
+  `reponse` text DEFAULT NULL,
+  `likes` int(11) NOT NULL DEFAULT 0,
+  `dislikes` int(11) NOT NULL DEFAULT 0,
+  `image_path` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `avis_votes`
+--
+
+CREATE TABLE `avis_votes` (
+  `vote_id` int(11) NOT NULL,
+  `avis_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `type` enum('like','dislike') NOT NULL,
+  `date_vote` timestamp NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `bridge_messages`
+--
+
+CREATE TABLE `bridge_messages` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `direction` enum('in','out') NOT NULL DEFAULT 'in',
+  `local_site` varchar(80) NOT NULL,
+  `remote_site` varchar(120) DEFAULT NULL,
+  `source_user` varchar(80) DEFAULT NULL,
+  `message` text NOT NULL,
+  `remote_ip` varchar(80) DEFAULT NULL,
+  `remote_response_code` int(11) DEFAULT NULL,
+  `remote_response` text DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `cadeaux`
+--
+
+CREATE TABLE `cadeaux` (
+  `cadeau_id` int(11) NOT NULL,
+  `expediteur_id` int(11) NOT NULL,
+  `destinataire_id` int(11) NOT NULL,
+  `montant` decimal(10,2) NOT NULL,
+  `message` varchar(255) DEFAULT NULL,
+  `date_envoi` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `captcha_logs`
+--
+
+CREATE TABLE `captcha_logs` (
+  `log_id` int(11) NOT NULL,
+  `ip` varchar(50) NOT NULL,
+  `success` tinyint(1) NOT NULL,
+  `attempt_time` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `commandes`
+--
+
+CREATE TABLE `commandes` (
+  `commande_id` int(11) NOT NULL,
+  `numero_utilisateur` int(11) DEFAULT NULL,
+  `user_id` int(11) NOT NULL,
+  `date_commande` timestamp NULL DEFAULT current_timestamp(),
+  `statut` enum('en_attente','en_preparation','en_livraison','livree','annulee') DEFAULT 'en_attente',
+  `montant_total` decimal(65,2) DEFAULT NULL,
+  `montant_reduction` decimal(65,2) DEFAULT 0.00,
+  `montant_solde_utilise` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `coupon_id` int(11) DEFAULT NULL,
+  `mode_paiement` enum('carte','paypal','livraison') DEFAULT 'carte',
+  `date_paiement` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `commande_plats`
+--
+
+CREATE TABLE `commande_plats` (
+  `commande_id` int(11) NOT NULL,
+  `plat_id` int(11) NOT NULL,
+  `quantite` int(11) DEFAULT 1,
+  `prix_unitaire` decimal(6,2) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `coupons`
+--
+
+CREATE TABLE `coupons` (
+  `coupon_id` int(11) NOT NULL,
+  `code_reduction` varchar(50) NOT NULL,
+  `type` enum('pourcentage','montant') NOT NULL,
+  `valeur` decimal(10,2) NOT NULL,
+  `date_debut` datetime NOT NULL,
+  `date_fin` datetime NOT NULL,
+  `utilisation_max` int(11) DEFAULT NULL,
+  `utilisations` int(11) DEFAULT 0,
+  `actif` tinyint(1) DEFAULT 1,
+  `restaurant_id` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `email_tokens`
+--
+
+CREATE TABLE `email_tokens` (
+  `token_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `token` varchar(64) NOT NULL,
+  `type` enum('verify','reset') NOT NULL DEFAULT 'verify',
+  `new_email` varchar(100) DEFAULT NULL COMMENT 'Utilisé pour changement d email en attente',
+  `expires_at` datetime NOT NULL,
+  `used` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `favoris`
+--
+
+CREATE TABLE `favoris` (
+  `favori_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `restaurant_id` int(11) NOT NULL,
+  `date_ajout` timestamp NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `forum_messages`
+--
+
+CREATE TABLE `forum_messages` (
+  `message_id` int(11) NOT NULL,
+  `topic_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `contenu` text NOT NULL,
+  `parent_id` int(11) DEFAULT NULL,
+  `date_message` timestamp NULL DEFAULT current_timestamp(),
+  `modifie` tinyint(1) DEFAULT 0,
+  `date_modification` timestamp NULL DEFAULT NULL,
+  `auteur_supprime` tinyint(1) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `forum_message_images`
+--
+
+CREATE TABLE `forum_message_images` (
+  `image_id` int(11) NOT NULL,
+  `message_id` int(11) NOT NULL,
+  `chemin_image` varchar(255) NOT NULL,
+  `ordre` tinyint(4) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `forum_notifs`
+--
+
+CREATE TABLE `forum_notifs` (
+  `notif_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL COMMENT 'destinataire',
+  `topic_id` int(11) NOT NULL,
+  `message_id` int(11) NOT NULL COMMENT 'dernier message déclencheur',
+  `topic_titre` varchar(255) NOT NULL,
+  `auteur_nom` varchar(100) NOT NULL,
+  `is_read` tinyint(1) NOT NULL DEFAULT 0,
+  `is_reply` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `forum_topics`
+--
+
+CREATE TABLE `forum_topics` (
+  `topic_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `titre` varchar(255) NOT NULL,
+  `categorie` enum('restaurants','recettes','conseils','general') DEFAULT 'general',
+  `epingle` tinyint(1) DEFAULT 0,
+  `verrouille` tinyint(1) DEFAULT 0,
+  `date_creation` timestamp NULL DEFAULT current_timestamp(),
+  `derniere_activite` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `nb_reponses` int(11) DEFAULT 0,
+  `vues` int(11) DEFAULT 0,
+  `auteur_supprime` tinyint(1) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `messages_admin`
+--
+
+CREATE TABLE `messages_admin` (
+  `message_id` int(11) NOT NULL,
+  `nom` varchar(100) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `sujet` varchar(200) NOT NULL,
+  `message` text NOT NULL,
+  `type_message` enum('general','compte','signalement','technique','suggestion','autre') DEFAULT 'general',
+  `lu` tinyint(1) DEFAULT 0,
+  `reponse_admin` text DEFAULT NULL,
+  `date_reponse` datetime DEFAULT NULL,
+  `date_envoi` timestamp NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `notifications`
+--
+
+CREATE TABLE `notifications` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `type` enum('comment','reply','cadeau') NOT NULL,
+  `restaurant_id` int(11) DEFAULT NULL,
+  `avis_id` int(11) DEFAULT NULL,
+  `cadeau_id` int(11) DEFAULT NULL,
+  `message` varchar(255) NOT NULL,
+  `is_read` tinyint(1) DEFAULT 0,
+  `created_at` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `notify_list`
+--
+
+CREATE TABLE `notify_list` (
+  `id` int(11) NOT NULL,
+  `nom` varchar(100) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `actif` tinyint(1) NOT NULL DEFAULT 1,
+  `date_ajout` timestamp NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `notify_log`
+--
+
+CREATE TABLE `notify_log` (
+  `log_id` int(11) NOT NULL,
+  `date_envoi` datetime NOT NULL DEFAULT current_timestamp(),
+  `nb_envoyes` int(11) NOT NULL DEFAULT 0,
+  `statut` enum('ok','erreur') NOT NULL DEFAULT 'ok',
+  `detail` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `panier`
+--
+
+CREATE TABLE `panier` (
+  `panier_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `plat_id` int(11) NOT NULL,
+  `quantite` int(11) DEFAULT 1,
+  `date_ajout` timestamp NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `parametres_stream`
+--
+
+CREATE TABLE `parametres_stream` (
+  `cle` varchar(100) NOT NULL,
+  `valeur` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `plats`
+--
+
+CREATE TABLE `plats` (
+  `plat_id` int(11) NOT NULL,
+  `restaurant_id` int(11) NOT NULL,
+  `nom_plat` varchar(100) NOT NULL,
+  `prix` decimal(6,2) NOT NULL,
+  `image_path` varchar(512) DEFAULT NULL,
+  `description_plat` text DEFAULT NULL,
+  `type_plat` enum('entree','plat','accompagnement','boisson','dessert','sauce') DEFAULT 'plat'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `profil_stats`
+--
+
+CREATE TABLE `profil_stats` (
+  `stat_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `nb_visites` int(11) DEFAULT 0,
+  `derniere_visite` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `restaurants`
+--
+
+CREATE TABLE `restaurants` (
+  `restaurant_id` int(11) NOT NULL,
+  `proprietaire_id` int(11) DEFAULT NULL,
+  `nom_restaurant` varchar(100) NOT NULL,
+  `adresse` varchar(255) DEFAULT NULL,
+  `latitude` double DEFAULT NULL,
+  `longitude` double DEFAULT NULL,
+  `categorie` varchar(50) DEFAULT NULL,
+  `description_resto` text DEFAULT NULL,
+  `verified` tinyint(1) NOT NULL DEFAULT 0,
+  `ouvert` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `sessions_actives`
+--
+
+CREATE TABLE `sessions_actives` (
+  `session_id` varchar(128) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `derniere_activite` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `tentatives_conn`
+--
+
+CREATE TABLE `tentatives_conn` (
+  `id` int(11) NOT NULL,
+  `ip` varchar(50) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `attempt_time` datetime NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `users`
+--
+
+CREATE TABLE `users` (
+  `user_id` int(11) NOT NULL,
+  `nom_user` varchar(45) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `email_fictif` tinyint(1) NOT NULL DEFAULT 0,
+  `email_verifie` tinyint(1) NOT NULL DEFAULT 0,
+  `email_verifie_at` datetime DEFAULT NULL,
+  `telephone` varchar(20) DEFAULT NULL,
+  `motdepasse` varchar(255) NOT NULL,
+  `google_id` varchar(100) DEFAULT NULL,
+  `google_photo` varchar(512) DEFAULT NULL,
+  `adresse_livraison` varchar(255) DEFAULT NULL,
+  `solde` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `photo_profil` varchar(255) DEFAULT NULL,
+  `description_profil` text DEFAULT NULL,
+  `couleur_vanta` varchar(7) DEFAULT '#dba1b2',
+  `compte_actif` tinyint(1) DEFAULT 1,
+  `date_desactivation` datetime DEFAULT NULL,
+  `type_compte` enum('client','proprietaire') DEFAULT 'client',
+  `date_creation` timestamp NULL DEFAULT current_timestamp(),
+  `derniere_connexion` datetime DEFAULT NULL,
+  `role` varchar(32) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `user_preferences`
+--
+
+CREATE TABLE `user_preferences` (
+  `pref_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `notif_forum_actif` tinyint(1) NOT NULL DEFAULT 1 COMMENT '1 = recevoir les notifs forum en temps reel',
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `reduire_animations` tinyint(1) NOT NULL DEFAULT 0 COMMENT '1 = désactiver Vanta animé',
+  `profil_prive` tinyint(1) NOT NULL DEFAULT 0 COMMENT '1 = profil public masqué aux autres'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Indexes for dumped tables
+--
+
+--
+-- Indexes for table `admin_actions`
+--
+ALTER TABLE `admin_actions`
+  ADD PRIMARY KEY (`action_id`),
+  ADD KEY `admin_id` (`admin_id`),
+  ADD KEY `target_user_id` (`target_user_id`),
+  ADD KEY `target_id` (`target_id`);
+
+--
+-- Indexes for table `annonces`
+--
+ALTER TABLE `annonces`
+  ADD PRIMARY KEY (`annonce_id`);
+
+--
+-- Indexes for table `approvisionnements`
+--
+ALTER TABLE `approvisionnements`
+  ADD PRIMARY KEY (`approvisionnement_id`),
+  ADD KEY `user_id` (`user_id`);
+
+--
+-- Indexes for table `avis`
+--
+ALTER TABLE `avis`
+  ADD PRIMARY KEY (`avis_id`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `restaurant_id` (`restaurant_id`);
+
+--
+-- Indexes for table `avis_votes`
+--
+ALTER TABLE `avis_votes`
+  ADD PRIMARY KEY (`vote_id`),
+  ADD UNIQUE KEY `unique_vote` (`avis_id`,`user_id`),
+  ADD KEY `fk_av_vote_user` (`user_id`);
+
+--
+-- Indexes for table `bridge_messages`
+--
+ALTER TABLE `bridge_messages`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_bridge_messages_created_at` (`created_at`),
+  ADD KEY `idx_bridge_messages_direction` (`direction`);
+
+--
+-- Indexes for table `cadeaux`
+--
+ALTER TABLE `cadeaux`
+  ADD PRIMARY KEY (`cadeau_id`),
+  ADD KEY `expediteur_id` (`expediteur_id`),
+  ADD KEY `destinataire_id` (`destinataire_id`);
+
+--
+-- Indexes for table `captcha_logs`
+--
+ALTER TABLE `captcha_logs`
+  ADD PRIMARY KEY (`log_id`);
+
+--
+-- Indexes for table `commandes`
+--
+ALTER TABLE `commandes`
+  ADD PRIMARY KEY (`commande_id`),
+  ADD KEY `user_id` (`user_id`);
+
+--
+-- Indexes for table `commande_plats`
+--
+ALTER TABLE `commande_plats`
+  ADD PRIMARY KEY (`commande_id`,`plat_id`),
+  ADD KEY `plat_id` (`plat_id`);
+
+--
+-- Indexes for table `coupons`
+--
+ALTER TABLE `coupons`
+  ADD PRIMARY KEY (`coupon_id`),
+  ADD UNIQUE KEY `code_reduction` (`code_reduction`),
+  ADD KEY `restaurant_id` (`restaurant_id`);
+
+--
+-- Indexes for table `email_tokens`
+--
+ALTER TABLE `email_tokens`
+  ADD PRIMARY KEY (`token_id`),
+  ADD UNIQUE KEY `uq_token` (`token`),
+  ADD KEY `fk_et_user` (`user_id`);
+
+--
+-- Indexes for table `favoris`
+--
+ALTER TABLE `favoris`
+  ADD PRIMARY KEY (`favori_id`),
+  ADD UNIQUE KEY `unique_favori` (`user_id`,`restaurant_id`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `restaurant_id` (`restaurant_id`);
+
+--
+-- Indexes for table `forum_messages`
+--
+ALTER TABLE `forum_messages`
+  ADD PRIMARY KEY (`message_id`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `idx_message_topic` (`topic_id`),
+  ADD KEY `idx_message_parent` (`parent_id`);
+
+--
+-- Indexes for table `forum_message_images`
+--
+ALTER TABLE `forum_message_images`
+  ADD PRIMARY KEY (`image_id`),
+  ADD KEY `message_id` (`message_id`);
+
+--
+-- Indexes for table `forum_notifs`
+--
+ALTER TABLE `forum_notifs`
+  ADD PRIMARY KEY (`notif_id`),
+  ADD KEY `fk_fn_user` (`user_id`),
+  ADD KEY `fk_fn_topic` (`topic_id`),
+  ADD KEY `fk_fn_message` (`message_id`),
+  ADD KEY `idx_fn_user_unread` (`user_id`,`is_read`);
+
+--
+-- Indexes for table `forum_topics`
+--
+ALTER TABLE `forum_topics`
+  ADD PRIMARY KEY (`topic_id`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `idx_topic_categorie` (`categorie`),
+  ADD KEY `idx_topic_date` (`derniere_activite`);
+
+--
+-- Indexes for table `messages_admin`
+--
+ALTER TABLE `messages_admin`
+  ADD PRIMARY KEY (`message_id`),
+  ADD KEY `idx_lu` (`lu`),
+  ADD KEY `idx_type` (`type_message`),
+  ADD KEY `idx_date` (`date_envoi`);
+
+--
+-- Indexes for table `notifications`
+--
+ALTER TABLE `notifications`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `restaurant_id` (`restaurant_id`),
+  ADD KEY `avis_id` (`avis_id`),
+  ADD KEY `fk_notif_cadeau` (`cadeau_id`);
+
+--
+-- Indexes for table `notify_list`
+--
+ALTER TABLE `notify_list`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_notify_email` (`email`);
+
+--
+-- Indexes for table `notify_log`
+--
+ALTER TABLE `notify_log`
+  ADD PRIMARY KEY (`log_id`);
+
+--
+-- Indexes for table `panier`
+--
+ALTER TABLE `panier`
+  ADD PRIMARY KEY (`panier_id`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `plat_id` (`plat_id`);
+
+--
+-- Indexes for table `parametres_stream`
+--
+ALTER TABLE `parametres_stream`
+  ADD PRIMARY KEY (`cle`);
+
+--
+-- Indexes for table `plats`
+--
+ALTER TABLE `plats`
+  ADD PRIMARY KEY (`plat_id`),
+  ADD KEY `restaurant_id` (`restaurant_id`);
+
+--
+-- Indexes for table `profil_stats`
+--
+ALTER TABLE `profil_stats`
+  ADD PRIMARY KEY (`stat_id`),
+  ADD UNIQUE KEY `user_id` (`user_id`);
+
+--
+-- Indexes for table `restaurants`
+--
+ALTER TABLE `restaurants`
+  ADD PRIMARY KEY (`restaurant_id`),
+  ADD KEY `proprietaire_id` (`proprietaire_id`);
+
+--
+-- Indexes for table `sessions_actives`
+--
+ALTER TABLE `sessions_actives`
+  ADD PRIMARY KEY (`session_id`),
+  ADD KEY `fk_sa_user` (`user_id`),
+  ADD KEY `idx_sa_activite` (`derniere_activite`);
+
+--
+-- Indexes for table `tentatives_conn`
+--
+ALTER TABLE `tentatives_conn`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `users`
+--
+ALTER TABLE `users`
+  ADD PRIMARY KEY (`user_id`),
+  ADD UNIQUE KEY `email` (`email`),
+  ADD UNIQUE KEY `uq_google_id` (`google_id`);
+
+--
+-- Indexes for table `user_preferences`
+--
+ALTER TABLE `user_preferences`
+  ADD PRIMARY KEY (`pref_id`),
+  ADD UNIQUE KEY `uq_pref_user` (`user_id`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `admin_actions`
+--
+ALTER TABLE `admin_actions`
+  MODIFY `action_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `annonces`
+--
+ALTER TABLE `annonces`
+  MODIFY `annonce_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `approvisionnements`
+--
+ALTER TABLE `approvisionnements`
+  MODIFY `approvisionnement_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `avis`
+--
+ALTER TABLE `avis`
+  MODIFY `avis_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `avis_votes`
+--
+ALTER TABLE `avis_votes`
+  MODIFY `vote_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `bridge_messages`
+--
+ALTER TABLE `bridge_messages`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `cadeaux`
+--
+ALTER TABLE `cadeaux`
+  MODIFY `cadeau_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `captcha_logs`
+--
+ALTER TABLE `captcha_logs`
+  MODIFY `log_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `commandes`
+--
+ALTER TABLE `commandes`
+  MODIFY `commande_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `coupons`
+--
+ALTER TABLE `coupons`
+  MODIFY `coupon_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `email_tokens`
+--
+ALTER TABLE `email_tokens`
+  MODIFY `token_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `favoris`
+--
+ALTER TABLE `favoris`
+  MODIFY `favori_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `forum_messages`
+--
+ALTER TABLE `forum_messages`
+  MODIFY `message_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `forum_message_images`
+--
+ALTER TABLE `forum_message_images`
+  MODIFY `image_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `forum_notifs`
+--
+ALTER TABLE `forum_notifs`
+  MODIFY `notif_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `forum_topics`
+--
+ALTER TABLE `forum_topics`
+  MODIFY `topic_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `messages_admin`
+--
+ALTER TABLE `messages_admin`
+  MODIFY `message_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `notifications`
+--
+ALTER TABLE `notifications`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `notify_list`
+--
+ALTER TABLE `notify_list`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `notify_log`
+--
+ALTER TABLE `notify_log`
+  MODIFY `log_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `panier`
+--
+ALTER TABLE `panier`
+  MODIFY `panier_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `plats`
+--
+ALTER TABLE `plats`
+  MODIFY `plat_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `profil_stats`
+--
+ALTER TABLE `profil_stats`
+  MODIFY `stat_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `restaurants`
+--
+ALTER TABLE `restaurants`
+  MODIFY `restaurant_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `tentatives_conn`
+--
+ALTER TABLE `tentatives_conn`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `users`
+--
+ALTER TABLE `users`
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `user_preferences`
+--
+ALTER TABLE `user_preferences`
+  MODIFY `pref_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `approvisionnements`
+--
+ALTER TABLE `approvisionnements`
+  ADD CONSTRAINT `fk_appro_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `cadeaux`
+--
+ALTER TABLE `cadeaux`
+  ADD CONSTRAINT `fk_cadeau_destinataire` FOREIGN KEY (`destinataire_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_cadeau_expediteur` FOREIGN KEY (`expediteur_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `email_tokens`
+--
+ALTER TABLE `email_tokens`
+  ADD CONSTRAINT `fk_et_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `favoris`
+--
+ALTER TABLE `favoris`
+  ADD CONSTRAINT `favoris_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `favoris_ibfk_2` FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`restaurant_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `forum_messages`
+--
+ALTER TABLE `forum_messages`
+  ADD CONSTRAINT `fk_fm_parent` FOREIGN KEY (`parent_id`) REFERENCES `forum_messages` (`message_id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `forum_messages_ibfk_1` FOREIGN KEY (`topic_id`) REFERENCES `forum_topics` (`topic_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `forum_messages_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `forum_message_images`
+--
+ALTER TABLE `forum_message_images`
+  ADD CONSTRAINT `fk_fmi_message` FOREIGN KEY (`message_id`) REFERENCES `forum_messages` (`message_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `forum_notifs`
+--
+ALTER TABLE `forum_notifs`
+  ADD CONSTRAINT `fk_fn_msg` FOREIGN KEY (`message_id`) REFERENCES `forum_messages` (`message_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_fn_topic` FOREIGN KEY (`topic_id`) REFERENCES `forum_topics` (`topic_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_fn_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `forum_topics`
+--
+ALTER TABLE `forum_topics`
+  ADD CONSTRAINT `forum_topics_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `notifications`
+--
+ALTER TABLE `notifications`
+  ADD CONSTRAINT `fk_notif_cadeau` FOREIGN KEY (`cadeau_id`) REFERENCES `cadeaux` (`cadeau_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `profil_stats`
+--
+ALTER TABLE `profil_stats`
+  ADD CONSTRAINT `profil_stats_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `user_preferences`
+--
+ALTER TABLE `user_preferences`
+  ADD CONSTRAINT `fk_pref_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
