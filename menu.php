@@ -175,6 +175,18 @@ $type_labels = [
     #volume-widget {
     right: 20px;
     }
+
+    /* Surlignage temporaire du plat visé par une ancre (#plat-X) */
+    .resto-card.plat-highlight {
+      animation: platHighlightPulse 1.8s ease-out 2;
+      box-shadow: 0 0 0 3px #ff6b6b, 0 8px 25px rgba(255, 107, 107, 0.35);
+    }
+
+    @keyframes platHighlightPulse {
+      0%   { box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.9), 0 8px 25px rgba(255, 107, 107, 0.5); }
+      70%  { box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.25), 0 8px 25px rgba(255, 107, 107, 0.15); }
+      100% { box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.9), 0 8px 25px rgba(255, 107, 107, 0.5); }
+    }
   </style>
   
   <main class="container">
@@ -239,7 +251,7 @@ $type_labels = [
       </h3>
       <div class="resto-list">
         <?php foreach ($items as $p): ?>
-          <div class="resto-card">
+          <div class="resto-card" id="plat-<?= (int)$p['plat_id'] ?>">
             <div class="plat-img-wrapper">
               <?php if (!empty($p['image_path']) && file_exists($p['image_path'])): ?>
                 <img src="<?= htmlspecialchars($p['image_path']) ?>"
@@ -252,7 +264,18 @@ $type_labels = [
               <?php endif; ?>
             </div>
             <h3 style="text-shadow: 0 1px 8px rgba(244, 67, 54, 0.47);"><?= htmlspecialchars($p['nom_plat']) ?></h3>
-            <p><?= htmlspecialchars($p['description_plat'] ?? "Aucune description") ?></p>
+            <?php
+              $desc_plat_brute = $p['description_plat'] ?: "Aucune description";
+              $img_plat_modal  = (!empty($p['image_path']) && file_exists($p['image_path'])) ? $p['image_path'] : 'assets/foodhub-placeholder.png';
+            ?>
+            <p class="plat-desc-clamp"><?= nl2br(htmlspecialchars($desc_plat_brute)) ?></p>
+            <button type="button" class="voir-plus-btn" style="display:none;"
+              data-nom="<?= htmlspecialchars($p['nom_plat'], ENT_QUOTES) ?>"
+              data-prix="<?= number_format($p['prix'], 2) ?>"
+              data-desc="<?= htmlspecialchars($desc_plat_brute, ENT_QUOTES) ?>"
+              data-img="<?= htmlspecialchars($img_plat_modal, ENT_QUOTES) ?>">
+              Voir plus...
+            </button>
             <p><strong><?= number_format($p['prix'], 2) ?> €</strong></p>
             <?php if(isset($_SESSION['user_id'])): ?>
             <div class="add-to-cart" data-plat-id="<?= (int)$p['plat_id'] ?>">
@@ -457,9 +480,62 @@ $type_labels = [
   </div>
 </div>
 
+<!-- Modal détail plat (photo + titre + prix + description complète) -->
+<div id="modal-plat-detail" class="plat-detail-overlay" onclick="if(event.target===this) closePlatDetail()">
+  <div class="plat-detail-wrapper">
+    <div class="plat-detail-box">
+      <div class="plat-detail-img">
+        <img id="plat-detail-img" src="" alt="">
+      </div>
+      <div class="plat-detail-info">
+        <div class="plat-detail-head">
+          <h3 id="plat-detail-nom"></h3>
+          <span class="plat-detail-prix" id="plat-detail-prix"></span>
+        </div>
+        <div class="plat-detail-desc" id="plat-detail-desc"></div>
+      </div>
+    </div>
+    <p class="plat-detail-hint">Cliquez en dehors pour fermer</p>
+  </div>
+</div>
+
 <script>
 // Gestion des filtres
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener('DOMContentLoaded', () => {
+
+  // Afficher le bouton "Voir plus" uniquement si la description est réellement tronquée
+  document.querySelectorAll('.plat-desc-clamp').forEach(desc => {
+    if (desc.scrollHeight > desc.clientHeight + 1) {
+      const btn = desc.nextElementSibling;
+      if (btn && btn.classList.contains('voir-plus-btn')) {
+        btn.style.display = 'inline-block';
+      }
+    }
+  });
+
+  // Ouverture du modal détail plat
+  document.querySelectorAll('.voir-plus-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('plat-detail-img').src = btn.dataset.img;
+      document.getElementById('plat-detail-img').alt = btn.dataset.nom;
+      document.getElementById('plat-detail-nom').textContent = btn.dataset.nom;
+      document.getElementById('plat-detail-prix').textContent = btn.dataset.prix + ' €';
+
+      // Reconstruction sécurisée de la description avec sauts de ligne (pas d'innerHTML pour éviter toute injection)
+      const descEl = document.getElementById('plat-detail-desc');
+      descEl.textContent = '';
+      const lignes = btn.dataset.desc.split('\n');
+      lignes.forEach((ligne, i) => {
+        descEl.appendChild(document.createTextNode(ligne));
+        if (i < lignes.length - 1) descEl.appendChild(document.createElement('br'));
+      });
+
+      const modalPlat = document.getElementById('modal-plat-detail');
+      modalPlat.classList.remove('closing');
+      modalPlat.style.display = 'flex';
+    });
+  });
+
   const filterBtns = document.querySelectorAll(".filter-btn");
   const categories = document.querySelectorAll(".menu-category");
 
@@ -1403,6 +1479,193 @@ ul {
   transform: scale(1.05);
 }
 
+/* Description de plat tronquée à 5 lignes (avec ou sans sauts de ligne) */
+.plat-desc-clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.voir-plus-btn {
+  background: none;
+  border: none;
+  color: #ff6b6b;
+  font-weight: 700;
+  font-family: 'HSR', sans-serif;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0;
+  margin: -8px 0 8px;
+  transition: all 0.25s ease;
+  transform: none;
+  text-decoration: none;
+}
+
+.voir-plus-btn:hover {
+  text-decoration: underline;
+  opacity: 0.85;
+  background: none;
+  border: none;
+  padding: 0;
+  transform: none;
+}
+
+/* Modal détail plat */
+.plat-detail-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  animation: platDetailOverlayIn 0.25s ease;
+}
+
+.plat-detail-overlay.closing {
+  animation: platDetailOverlayOut 0.22s ease forwards;
+}
+
+.plat-detail-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 95vw;
+  max-height: 90vh;
+}
+
+.plat-detail-box {
+  display: flex;
+  align-items: stretch;
+  width: fit-content;
+  max-width: 95vw;
+  max-height: calc(90vh - 2.2rem);
+  background: rgba(255,255,255,0.97);
+  backdrop-filter: blur(20px);
+  border-radius: 1.5rem;
+  overflow: hidden;
+  box-shadow: 0 10px 50px rgba(0,0,0,0.35);
+  animation: platDetailBoxIn 0.25s ease;
+}
+
+.plat-detail-overlay.closing .plat-detail-box {
+  animation: platDetailBoxOut 0.22s ease forwards;
+}
+
+@keyframes platDetailOverlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes platDetailOverlayOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes platDetailBoxIn {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes platDetailBoxOut {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.94); }
+}
+
+.plat-detail-img {
+  flex: 0 1 auto;
+  max-width: min(60vw, 620px);
+  max-height: calc(90vh - 2.2rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.04);
+}
+
+.plat-detail-img img {
+  display: block;
+  max-width: min(60vw, 620px);
+  max-height: calc(90vh - 2.2rem);
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.plat-detail-info {
+  flex: 1 1 320px;
+  min-width: 280px;
+  max-width: 420px;
+  padding: 2rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.plat-detail-head {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid rgba(255,107,107,0.2);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.plat-detail-head h3 {
+  margin: 0;
+  color: #ff6b6b;
+  font-size: 1.4rem;
+  text-shadow: 0 1px 6px rgba(244, 67, 54, 0.3);
+}
+
+.plat-detail-prix {
+  display: inline-block;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #fff;
+  background: linear-gradient(135deg, #ff6b6b, #ff8c42);
+  padding: 0.35rem 0.9rem;
+  border-radius: 12px;
+}
+
+.plat-detail-desc {
+  color: #333;
+  line-height: 1.6;
+  white-space: pre-line;
+  font-size: 0.98rem;
+}
+
+.plat-detail-hint {
+  margin-top: 0.9rem;
+  color: rgba(255,255,255,0.85);
+  font-size: 0.8rem;
+  font-family: 'HSR', sans-serif;
+  text-align: center;
+  pointer-events: none;
+  cursor: none;
+}
+
+@media (max-width: 640px) {
+  .plat-detail-box {
+    flex-direction: column;
+    max-height: 85vh;
+    width: 100%;
+  }
+  .plat-detail-img,
+  .plat-detail-img img {
+    max-width: 100%;
+    max-height: 45vh;
+  }
+  .plat-detail-info {
+    max-width: 100%;
+    padding: 1.4rem;
+  }
+}
+
 .cuisine-fermee-banner {
     background: linear-gradient(135deg, rgba(244,67,54,0.2), rgba(255,107,107,0.15));
     border-left: 5px solid #f44336;
@@ -1447,6 +1710,26 @@ ul {
   color: #ff6b6b;
   border-color: #ff6b6b;
   pointer-events: none;
+}
+
+.plat-detail-info::-webkit-scrollbar {
+  width: 7px;
+}
+
+.plat-detail-info::-webkit-scrollbar-track {
+  background: rgba(196, 115, 115, 0.1); 
+  border-radius: 20px;
+}
+
+.plat-detail-info::-webkit-scrollbar-thumb {
+  background: rgba(243, 123, 123, 0.5);
+  border-radius: 20px;
+  transition: all ease 0.2s;
+}
+
+.plat-detail-info::-webkit-scrollbar-thumb:hover {
+  background: rgba(188, 85, 85, 0.78);
+  transition: all ease 0.2s;
 }
 </style>
 
@@ -1603,9 +1886,20 @@ function openImageModal(src) {
   modalImg.src = src;
 }
 
-//fermer le modal
+//fermer le modal d'image
 function closeImageModal() {
   document.getElementById('imageModal').style.display = 'none';
+}
+
+//fermer le modal de plat (avec petite animation de sortie)
+function closePlatDetail() {
+  const modalPlat = document.getElementById('modal-plat-detail');
+  if (modalPlat.style.display !== 'flex') return;
+  modalPlat.classList.add('closing');
+  setTimeout(() => {
+    modalPlat.style.display = 'none';
+    modalPlat.classList.remove('closing');
+  }, 220);
 }
 
 //fermer avec la touche Escape
@@ -1613,6 +1907,7 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
     closeImageModal();
     fermerSignalement();
+    closePlatDetail();
   }
 });
 </script>
@@ -1662,6 +1957,24 @@ function hideEditForm(id) {
     });
   }
 })();
+</script>
+
+<script>
+// Scroll + surlignage temporaire du plat visé par une ancre (ex: menu.php?restaurant_id=X#plat-Y)
+// utilisé par la recherche AJAX de restaurants.php
+document.addEventListener('DOMContentLoaded', () => {
+  if (!location.hash || !location.hash.startsWith('#plat-')) return;
+
+  const target = document.querySelector(location.hash);
+  if (!target) return;
+
+  // Laisse le temps aux autres scripts (Vanta, filtres...) de finir leur mise en page
+  setTimeout(() => {
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    target.classList.add('plat-highlight');
+    setTimeout(() => target.classList.remove('plat-highlight'), 3600);
+  }, 300);
+});
 </script>
 
 <script src="assets/update_vote.js"></script>
