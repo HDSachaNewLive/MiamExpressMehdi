@@ -83,15 +83,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     fh_delete_user($conn, $target_user_id);
                     $_SESSION['admin_message'] = "🗑️ Compte supprimé avec succès.";
                     // Enregistrer l'action dans l'historique (hors transaction déjà commitée)
-                    $stmt = $conn->prepare("INSERT INTO admin_actions (admin_id, target_user_id, action_type, raison) VALUES (?, ?, ?, ?)");
-                    $stmt->execute([(int)fh_current_user_id(), $target_user_id, $action, $raison]);
+                    $stmt = $conn->prepare("INSERT INTO admin_actions (admin_id, target_user_id, target_type, target_id, action_type, raison) VALUES (?, ?, ?, ?, ?, ?)");
+                    $stmt->execute([(int)fh_current_user_id(), $target_user_id, 'user', $target_user_id, $action, $raison]);
                     header("Location: admin_users.php");
                     exit;
             }
 
             // Enregistrer l'action dans l'historique (pour desactiver/activer)
-            $stmt = $conn->prepare("INSERT INTO admin_actions (admin_id, target_user_id, action_type, raison) VALUES (?, ?, ?, ?)");
-            $stmt->execute([(int)fh_current_user_id(), $target_user_id, $action, $raison]);
+            $stmt = $conn->prepare("INSERT INTO admin_actions (admin_id, target_user_id, target_type, target_id, action_type, raison) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([(int)fh_current_user_id(), $target_user_id, 'user', $target_user_id, $action, $raison]);
 
             $conn->commit();
 

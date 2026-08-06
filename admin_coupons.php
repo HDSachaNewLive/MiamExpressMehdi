@@ -17,6 +17,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_coupon'])) {
     $id = (int) $_POST['delete_coupon'];
     $stmt = $conn->prepare("DELETE FROM coupons WHERE coupon_id = ?");
     $stmt->execute([$id]);
+    $stmtLog = $conn->prepare("INSERT INTO admin_actions (admin_id, target_user_id, target_type, target_id, action_type, raison) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmtLog->execute([fh_current_user_id(), 0, 'coupon', $id, 'supprimer', 'Suppression d\'un coupon par l\'admin']);
     // Utiliser une session pour stocker le message
     $_SESSION['deleted_message'] = true;
     header("Location: admin_coupons.php");
