@@ -313,7 +313,7 @@ $solde_utilisateur = (float)($user['solde'] ?? 0);
   color: #000000;
   font-size: 1rem;
   outline: none;
-  transition: background 0.3s ease, transform 0.2s;
+  transition: all 0.25s;
   font-family: 'HSR';
 }
 .container form input:focus {
