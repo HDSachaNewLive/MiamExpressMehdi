@@ -1,0 +1,22 @@
+# ─────────────────────────────────────────────
+#  FoodHub — .htaccess
+# ─────────────────────────────────────────────
+
+Options -Indexes -MultiViews
+
+# ── Encodage & langue ──────────────────────────
+AddDefaultCharset UTF-8
+DefaultLanguage fr
+
+# ── Page d'erreur personnalisée ────────────────
+ErrorDocument 404 /404.php
+
+# ── Sécurité basique ───────────────────────────
+# Bloquer l'accès direct aux fichiers sensibles
+<FilesMatch "(config\.php|\.sql|\.env|\.log|\.mp4)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Désactiver la signature du serveur
+ServerSignature Off

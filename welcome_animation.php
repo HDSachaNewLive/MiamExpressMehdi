@@ -50,45 +50,32 @@ body.wl-pending #volume-widget {
   opacity: 0 !important;
   pointer-events: none !important;
 }
-#welcome-overlay {
-  display: flex !important;
-  opacity: 1 !important;
-  pointer-events: all !important;
-}
+/* Le display/opacity/pointer-events de #welcome-overlay lui-même ne dépend
+   PLUS de body.wl-pending (voir wl_render_overlay) : sinon retirer
+   wl-pending au début du fade faisait retomber l'overlay sur son
+   display:none par défaut instantanément, tuant toute transition
+   d'opacité (un élément display:none ne peut pas s'animer). */
 </style>
     <?php
 }
 
 function wl_render_overlay(): void {
+    global $show_welcome;
+    if (!$show_welcome) {
+        return;
+    }
     ?>
-<!-- Sons placeholder — remplacer quand les fichiers sont importés :
-     assets/sounds/welcome_circle.mp3  (2-4s, rotation cercle)
-     assets/sounds/welcome_loop.mp3    (≥4s, sauts lettres)
-     assets/sounds/welcome_end.mp3     (stinger fin boucle)
-     assets/sounds/welcome_burst.mp3   (cercles finaux)
--->
-
-<
 <div id="welcome-overlay" aria-hidden="true">
-  <div id="wl-bg"></div>
-  <div id="wl-stage">
-    <div id="wl-circle-wrap">
-      <canvas id="wl-circle" width="120" height="120"></canvas>
-    </div>
-    <div id="wl-logo-wrap">
-      <div id="wl-logo"><?php
-        foreach (str_split('FoodHub') as $l) {
-            echo "<span class='wl-letter'>$l</span>";
-        }
-      ?></div>
-    </div>
-    <div id="wl-burst-wrap"></div>
-  </div>
+  <video id="wl-video" src="assets/videos/FoodHub_anim.mp4" playsinline></video>
 </div>
 
 <style>
 #welcome-overlay {
-  display: none;
+  /* display:flex par défaut : ce bloc n'est de toute façon rendu par PHP
+     que lorsque $show_welcome est vrai (voir wl_render_overlay), donc pas
+     besoin de conditionner l'affichage à body.wl-pending. Seule l'opacité
+     doit rester animable indépendamment de cette classe. */
+  display: flex;
   position: fixed;
   inset: 0;
   z-index: 999999;
@@ -97,75 +84,147 @@ function wl_render_overlay(): void {
   overflow: hidden;
   pointer-events: all;
   background: transparent;
-}
-#wl-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-}
-#wl-stage {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0;
-}
-#wl-circle-wrap {
-  margin-bottom: 18px;
-  opacity: 0;
-  transform: scale(0.9);
-  transition: opacity 0.4s ease, transform 0.4s ease;
-}
-#wl-circle-wrap.wl-visible {
   opacity: 1;
-  transform: scale(1);
+  transition: opacity 2s ease;
 }
-#wl-logo-wrap {
+#welcome-overlay.wl-fading {
   opacity: 0;
-  transform: translateY(30px);
-  transition: opacity 0.8s ease, transform 0.8s ease;
-}
-#wl-logo-wrap.wl-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-#wl-logo-wrap.wl-exit {
-  opacity: 0;
-  transform: scale(0.85);
-  transition: opacity 0.7s ease, transform 0.7s ease;
-}
-#wl-logo {
-  font-family: 'HSR';
-  font-size: clamp(2.6rem, 8vw, 5rem);
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  color: #fff;
-  display: flex;
-  user-select: none;
-  perspective: 600px;
-  text-shadow: 0 0 14px rgba(220, 50, 30, 0.8), 0 0 32px rgba(220, 50, 30, 0.4);
-}
-.wl-letter {
-  display: inline-block;
-  transform-origin: bottom center;
-  will-change: transform, text-shadow;
-  text-shadow: 0 0 6px rgba(220, 50, 30, 0.35);
-}
-#wl-burst-wrap {
-  position: absolute;
-  top: -70px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 14px;
-  align-items: center;
   pointer-events: none;
 }
-.wl-burst-circle {
+#wl-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* État caché du container, indépendant de body.wl-pending : il doit rester
+   hors-écran pendant tout le fade de la vidéo, et ne remonter qu'à la toute
+   fin (revealInterface), pas dès que wl-pending est retiré. */
+.wl-container-hidden {
   opacity: 0;
-  transform: scale(0.5);
+  transform: translateY(100vh);
+}
+
+/* ── Remontée + fondu du container après la vidéo ── */
+@keyframes wlContainerSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(100vh);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.wl-container-reveal {
+  animation: wlContainerSlideUp 3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 </style>
+
+<script>
+(function () {
+  var overlay = document.getElementById('welcome-overlay');
+  var video   = document.getElementById('wl-video');
+  if (!overlay || !video) return;
+
+  // Durée réelle de la vidéo (16s + 54 frames à 60fps).
+  // Fixée en dur : les exports AE/Media Encoder n'ont souvent pas le flag
+  // "faststart", ce qui fait que video.duration renvoie Infinity dans le
+  // navigateur — on ne peut donc pas se fier uniquement à cette valeur.
+  var KNOWN_DURATION   = 16 + 54 / 60; // 16.9s
+  var FADE_BEFORE_END  = 2;            // secondes avant la fin où le fade démarre
+
+  var fadeStarted = false;
+  var revealed    = false;
+  var fadeTimer   = null;
+  var revealTimer = null;
+
+  function startFade() {
+    if (fadeStarted) return;
+    fadeStarted = true;
+    // Retire wl-pending maintenant : sinon le CSS critique (!important)
+    // garde l'overlay à opacity:1 de force pendant toute la transition,
+    // ce qui donnait l'impression d'une coupure nette à la fin.
+    document.body.classList.remove('wl-pending');
+    overlay.classList.add('wl-fading');
+  }
+
+  function revealInterface() {
+    if (revealed) return;
+    revealed = true;
+
+    clearTimeout(fadeTimer);
+    clearTimeout(revealTimer);
+
+    // Au cas où revealInterface() serait appelée sans être passée par
+    // startFade() juste avant (ex: event 'ended' qui devance les timers)
+    document.body.classList.remove('wl-pending');
+
+    overlay.style.display = 'none';
+
+    var container = document.getElementById('home-main-container');
+    if (container) {
+      container.classList.remove('wl-container-hidden');
+      container.classList.add('wl-container-reveal');
+    }
+
+    fetch('welcome_mark_shown.php', { method: 'POST' }).catch(function () {});
+    document.dispatchEvent(new Event('wl:revealed'));
+  }
+
+  function scheduleFixedTimers() {
+    // Filet de sécurité indépendant du player : garantit le fade et la
+    // révélation même si les events 'timeupdate'/'ended' de la vidéo
+    // se comportent mal (durée mal détectée, buffering...).
+    var fadeDelayMs   = Math.max(0, (KNOWN_DURATION - FADE_BEFORE_END) * 1000);
+    var revealDelayMs = KNOWN_DURATION * 1000;
+    fadeTimer   = setTimeout(startFade, fadeDelayMs);
+    revealTimer = setTimeout(revealInterface, revealDelayMs);
+  }
+
+  // Complément : si le navigateur arrive quand même à donner une durée
+  // fiable, on garde aussi la détection dynamique en plus des timers fixes.
+  video.addEventListener('timeupdate', function () {
+    if (isFinite(video.duration) && !fadeStarted && (video.duration - video.currentTime) <= FADE_BEFORE_END) {
+      startFade();
+    }
+  });
+  video.addEventListener('ended', revealInterface);
+  video.addEventListener('error', revealInterface);
+
+  function beginPlayback() {
+    var timersScheduled = false;
+
+    function onPlaybackStarted() {
+      if (timersScheduled) return;
+      timersScheduled = true;
+      video.removeEventListener('playing', onPlaybackStarted);
+      // Les timers démarrent ici, au moment où la lecture a RÉELLEMENT
+      // commencé (pas au moment où on a appelé play()) — ça évite le
+      // décalage causé par le buffering réseau, qui faisait couper la
+      // vidéo trop tôt par rapport à ce qu'on voyait à l'écran.
+      scheduleFixedTimers();
+    }
+
+    video.addEventListener('playing', onPlaybackStarted);
+
+    video.play().catch(function () {
+      video.muted = true;
+      video.play().catch(function () {
+        // Lecture totalement impossible : ne pas bloquer le site indéfiniment
+        onPlaybackStarted();
+      });
+    });
+  }
+
+  beginPlayback();
+
+  // Filet de sécurité ultime au cas où même les timers fixes échoueraient
+  // (onglet mis en arrière-plan, throttling navigateur, etc.)
+  setTimeout(function () {
+    if (!revealed) revealInterface();
+  }, (KNOWN_DURATION + 5) * 1000);
+})();
+</script>
     <?php
 }
